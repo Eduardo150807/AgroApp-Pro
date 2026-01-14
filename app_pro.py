@@ -57,13 +57,23 @@ st.markdown("""
         font-weight: 500;
     }
     
+    /* Box do Identificador */
+    .id-box {
+        background-color: #FFF3E0;
+        border-left: 5px solid #FF9800;
+        padding: 15px;
+        border-radius: 5px;
+        color: #E65100;
+        margin-bottom: 20px;
+    }
+    
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🧠 FUNÇÕES IA (COM PROTEÇÃO CONTRA ERRO 429)
+# 🧠 FUNÇÕES IA
 # ==========================================
 def descobrir_modelo(key):
     genai.configure(api_key=key)
@@ -113,20 +123,17 @@ def processar_laudo(audio_file, lista_imagens, key):
     REGRAS: "Baixeiro" NÃO É "Download". "Pressão" É "Alta Severidade".
     """
     
-    # TENTATIVA COM PROTEÇÃO DE COTA (RETRY)
     try:
         resp = model.generate_content([prompt, *arquivos_api])
         texto_limpo = forcar_termos_tecnicos(resp.text)
         try: os.unlink(path)
         except: pass
         return texto_limpo
-        
     except Exception as e:
-        # Se der erro 429 (Cota excedida)
         if "429" in str(e) or "ResourceExhausted" in str(e):
-            return "⚠️ **ERRO DE COTA:** A IA está 'cansada' (Muitos pedidos em pouco tempo). Aguarde 30 segundos e tente novamente. Isso é uma limitação da chave gratuita do Google."
+            return "⚠️ **ERRO DE COTA:** A IA está 'cansada'. Aguarde 30 segundos."
         else:
-            raise e # Se for outro erro, mostra normal
+            raise e
 
 # ==========================================
 # 📄 PDF
@@ -249,10 +256,11 @@ if not st.session_state['logado']:
 # --- MENU LATERAL ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 2.4")
+    st.caption("Versão PRO 2.5 (Com Detector)")
     
     opcao = st.radio("Ferramentas:", [
         "📝 Gerador de Laudo",
+        "🔍 Identificador de Pragas", # NOVO!
         "📊 Mercado & Cotações",
         "📏 Régua Fenológica",
         "🤖 Chatbot Técnico"
@@ -294,14 +302,11 @@ if opcao == "📝 Gerador de Laudo":
                 try:
                     aud.seek(0)
                     res = processar_laudo(aud, fotos, api_key)
-                    
-                    if "ERRO DE COTA" in res:
-                        st.error(res) # Mostra o erro amigável se estourou a cota
+                    if "ERRO DE COTA" in res: st.error(res)
                     else:
                         st.success("Pronto!")
-                        res_editavel = st.text_area("Texto do Laudo (Editável):", res, height=300)
+                        res_editavel = st.text_area("Texto do Laudo:", res, height=300)
                         pdf_bytes = gerar_pdf(res_editavel, st.session_state['usuario_atual'], fotos)
-                        
                         c1, c2 = st.columns(2)
                         with c1: st.download_button("📄 Baixar PDF", pdf_bytes, "Laudo.pdf", "application/pdf")
                         with c2: 
@@ -310,29 +315,82 @@ if opcao == "📝 Gerador de Laudo":
                 except Exception as e: st.error(f"Erro: {e}")
 
 
-# --- 2. MERCADO (AGORA COMPLETO) ---
+# --- 2. IDENTIFICADOR DE PRAGAS (A NOVIDADE) ---
+elif opcao == "🔍 Identificador de Pragas":
+    st.title("🔍 Detector Fitossanitário")
+    
+    st.markdown("""
+    <div class="id-box">
+    ⚠️ <b>Aviso Importante:</b> Esta ferramenta usa Inteligência Artificial para triagem. 
+    O diagnóstico definitivo deve ser confirmado por análise laboratorial ou visita técnica presencial. 
+    A IA pode confundir deficiências nutricionais com doenças.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Câmera do Dispositivo
+    img_camera = st.camera_input("📸 Tire uma foto da folha, inseto ou sintoma")
+    
+    # Ou Upload de arquivo
+    img_upload = st.file_uploader("Ou carregue uma foto da galeria", type=["jpg","png","jpeg"])
+    
+    arquivo_para_analisar = img_camera if img_camera else img_upload
+    
+    if arquivo_para_analisar and st.button("🕵️ Analisar Problema"):
+        if not api_key: st.error("Falta Chave API")
+        else:
+            with st.spinner("A IA está examinando a imagem..."):
+                try:
+                    # 1. Prepara a imagem
+                    img = Image.open(arquivo_para_analisar)
+                    
+                    # 2. Chama a IA
+                    nome_modelo = descobrir_modelo(api_key)
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel(nome_modelo)
+                    
+                    prompt_analise = """
+                    Atue como um Engenheiro Agrônomo e Fitopatologista Sênior.
+                    Analise esta imagem detalhadamente.
+                    1. Identifique a provável praga, doença ou deficiência. Se não tiver certeza, liste as possibilidades.
+                    2. Descreva os sintomas visíveis na imagem que levaram a essa conclusão.
+                    3. Sugira medidas de manejo cultural e químico (princípios ativos) gerais.
+                    Se a imagem não for de uma planta, responda: 'Não identifiquei uma cultura agrícola nesta imagem'.
+                    Seja direto e técnico.
+                    """
+                    
+                    resp = model.generate_content([prompt_analise, img])
+                    
+                    # 3. Mostra o resultado
+                    st.success("Análise Concluída")
+                    st.markdown("### 📋 Diagnóstico da IA")
+                    st.write(resp.text)
+                    
+                    st.info("💡 Dica: Se for doença, verifique o verso da folha também.")
+                    
+                except Exception as e:
+                    if "429" in str(e):
+                        st.warning("🚦 A IA está sobrecarregada. Aguarde 30 segundos e tente de novo.")
+                    else:
+                        st.error(f"Erro na análise: {e}")
+
+
+# --- 3. MERCADO ---
 elif opcao == "📊 Mercado & Cotações":
     st.title("📊 Painel de Mercado")
-    
-    # Linha 1: Soja e Milho
     c1, c2 = st.columns(2)
     with c1: st.metric("Soja (60kg)", "R$ 128,50", "-1.20 R$")
     with c2: st.metric("Milho (60kg)", "R$ 58,90", "0.50 R$")
-    
-    # Linha 2: Dólar e Boi (RESTAURADOS!)
     c3, c4 = st.columns(2)
     with c3: st.metric("Dólar (USD)", "R$ 5,04", "0.02 R$")
     with c4: st.metric("Boi Gordo (@)", "R$ 235,00", "-2.00 R$")
-    
     st.line_chart([132, 131, 130, 128, 129, 130, 128, 127, 128, 129])
 
 
-# --- 3. RÉGUA FENOLÓGICA ---
+# --- 4. RÉGUA FENOLÓGICA ---
 elif opcao == "📏 Régua Fenológica":
     st.title("📏 Régua de Estádios")
     cultura = st.selectbox("Selecione a Cultura:", list(FENOLOGIA_TEXTOS.keys()))
     st.divider()
-    
     estadios = FENOLOGIA_TEXTOS[cultura]
     for nome, descricao in estadios.items():
         st.markdown(f"""
@@ -341,19 +399,15 @@ elif opcao == "📏 Régua Fenológica":
             <span class="feno-desc">{descricao}</span>
         </div>
         """, unsafe_allow_html=True)
-        
     st.markdown("---")
     nome_arquivo = MAPA_IMAGENS.get(cultura)
     caminho_foto = os.path.join("img_fenologia", nome_arquivo)
-    
     st.subheader("📸 Escala Visual Completa")
-    if os.path.exists(caminho_foto):
-        st.image(caminho_foto, use_container_width=True)
-    else:
-        st.info(f"Salve a imagem '{nome_arquivo}' na pasta 'img_fenologia' para vê-la aqui.")
+    if os.path.exists(caminho_foto): st.image(caminho_foto, use_container_width=True)
+    else: st.info(f"Salve a imagem '{nome_arquivo}' na pasta 'img_fenologia'.")
 
 
-# --- 4. CHATBOT TÉCNICO (COM PROTEÇÃO 429) ---
+# --- 5. CHATBOT TÉCNICO ---
 elif opcao == "🤖 Chatbot Técnico":
     st.title("🤖 Consultor IA")
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
@@ -365,20 +419,16 @@ elif opcao == "🤖 Chatbot Técnico":
         else:
             st.session_state["msgs"].append({"role": "user", "content": p})
             st.chat_message("user").write(p)
-            
             nome_modelo_chat = descobrir_modelo(api_key) 
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(nome_modelo_chat)
-            
             try:
                 res = model.generate_content(f"Agrônomo Sênior respondendo curto: {p}").text
                 st.session_state["msgs"].append({"role": "assistant", "content": res})
                 st.chat_message("assistant").write(res)
             except Exception as e:
-                # Tratamento amigável do erro 429 no Chat
-                if "429" in str(e) or "ResourceExhausted" in str(e):
-                    msg_erro = "🚦 Tráfego intenso! A IA está no limite gratuito. Aguarde uns 10 segundos."
-                    st.session_state["msgs"].append({"role": "assistant", "content": msg_erro})
-                    st.chat_message("assistant").write(msg_erro)
-                else:
-                    st.error(f"Erro: {e}")
+                if "429" in str(e):
+                    msg = "🚦 Tráfego intenso! Aguarde 10 segundos."
+                    st.session_state["msgs"].append({"role": "assistant", "content": msg})
+                    st.chat_message("assistant").write(msg)
+                else: st.error(f"Erro: {e}")
