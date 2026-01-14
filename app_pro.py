@@ -36,27 +36,6 @@ st.markdown("""
         margin-top: 10px;
     }
     
-    /* RÉGUA FENOLÓGICA */
-    .feno-box {
-        background-color: #1E3F20; 
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        border-left: 6px solid #4CAF50; 
-    }
-    .feno-title {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #A5D6A7 !important;
-        display: block;
-        margin-bottom: 5px;
-    }
-    .feno-desc {
-        font-size: 1.0em;
-        color: #FFFFFF !important; 
-        font-weight: 500;
-    }
-    
     /* Box do Identificador */
     .id-box {
         background-color: #FFF3E0;
@@ -67,13 +46,26 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    /* Box Tira-Teima */
+    .tira-teima {
+        background-color: #E3F2FD;
+        border-left: 5px solid #2196F3;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+
+    /* Outros estilos mantidos */
+    .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; }
+    .feno-title { font-size: 1.2em; font-weight: bold; color: #A5D6A7 !important; display: block; margin-bottom: 5px; }
+    .feno-desc { font-size: 1.0em; color: #FFFFFF !important; font-weight: 500; }
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🧠 FUNÇÕES IA
+# 🧠 FUNÇÕES GERAIS
 # ==========================================
 def descobrir_modelo(key):
     genai.configure(api_key=key)
@@ -98,7 +90,6 @@ def processar_laudo(audio_file, lista_imagens, key):
     modelo_nome = descobrir_modelo(key)
     genai.configure(api_key=key)
     model = genai.GenerativeModel(modelo_nome)
-    
     arquivos_api = []
     
     nome = audio_file.name if hasattr(audio_file, 'name') else "audio.mp3"
@@ -122,7 +113,6 @@ def processar_laudo(audio_file, lista_imagens, key):
     ESTRUTURA: 1. RESUMO, 2. DIAGNÓSTICO, 3. PRESCRIÇÃO (Manter nomes comerciais), 4. OBSERVAÇÕES.
     REGRAS: "Baixeiro" NÃO É "Download". "Pressão" É "Alta Severidade".
     """
-    
     try:
         resp = model.generate_content([prompt, *arquivos_api])
         texto_limpo = forcar_termos_tecnicos(resp.text)
@@ -132,8 +122,7 @@ def processar_laudo(audio_file, lista_imagens, key):
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in str(e):
             return "⚠️ **ERRO DE COTA:** A IA está 'cansada'. Aguarde 30 segundos."
-        else:
-            raise e
+        else: raise e
 
 # ==========================================
 # 📄 PDF
@@ -184,50 +173,18 @@ def gerar_pdf(texto, usuario, lista_imagens):
     return bytes(pdf.output())
 
 # ==========================================
-# 📊 DADOS FENOLÓGICOS
+# 📊 DADOS ESTÁTICOS
 # ==========================================
 FENOLOGIA_TEXTOS = {
-    "🌱 Soja": {
-        "VE/VC": "Emergência e Cotilédones abertos.",
-        "V1-V4": "Vegetativo (nós com trifólios abertos).",
-        "R1 (Início Flor)": "Uma flor aberta em qualquer nó.",
-        "R3 (Canivete)": "Vagem de 5mm nos 4 nós superiores.",
-        "R5 (Enchimento)": "Semente de 3mm na vagem (Crítico).",
-        "R7 (Maturação)": "Uma vagem marrom/madura.",
-        "R8": "95% das vagens maduras."
-    },
-    "🌽 Milho": {
-        "VE": "Emergência.",
-        "V3": "3 folhas (Definição de estande).",
-        "V6": "Ponto de crescimento sai do solo.",
-        "VT (Pendoamento)": "Último ramo do pendão visível.",
-        "R1 (Embonecamento)": "Estigmas (cabelo) visíveis.",
-        "R6 (Maturidade)": "Camada negra na base."
-    },
-    "☁️ Algodão": {
-        "B1": "Botão Floral visível.",
-        "F1": "Primeira Flor Branca.",
-        "C1": "Primeira Maçã.",
-        "M": "Primeiro Capulho Aberto."
-    },
-    "🌾 Trigo": {
-        "Perfilhamento": "Surgimento dos perfilhos.",
-        "Emborrachamento": "Alongamento do colmo.",
-        "Espigamento": "Emergência da espiga.",
-        "Antese": "Floração."
-    },
-    "🫘 Feijão": {
-        "V3": "Primeira folha trifoliolada.",
-        "R6": "Abertura da flor.",
-        "R7": "Formação das vagens."
-    }
+    "🌱 Soja": {"VE/VC": "Emergência.", "V1-V4": "Vegetativo.", "R1": "Início Flor.", "R3": "Canivete.", "R5": "Enchimento.", "R7": "Maturação.", "R8": "Maduro."},
+    "🌽 Milho": {"VE": "Emergência.", "V3": "3 folhas.", "VT": "Pendoamento.", "R1": "Embonecamento.", "R6": "Maturidade."},
+    "☁️ Algodão": {"B1": "Botão Floral.", "F1": "Primeira Flor.", "C1": "Primeira Maçã.", "M": "Capulho Aberto."},
+    "🌾 Trigo": {"Perfilhamento": "Perfilhos.", "Emborrachamento": "Alongamento.", "Espigamento": "Espiga.", "Antese": "Floração."},
+    "🫘 Feijão": {"V3": "Trifólio.", "R6": "Flor.", "R7": "Vagem."}
 }
 MAPA_IMAGENS = {
-    "🌱 Soja": "regua_soja.jpg",
-    "🌽 Milho": "regua_milho.jpg",
-    "☁️ Algodão": "regua_algodao.jpg",
-    "🌾 Trigo": "regua_trigo.jpg",
-    "🫘 Feijão": "regua_feijao.jpg"
+    "🌱 Soja": "regua_soja.jpg", "🌽 Milho": "regua_milho.jpg", "☁️ Algodão": "regua_algodao.jpg", 
+    "🌾 Trigo": "regua_trigo.jpg", "🫘 Feijão": "regua_feijao.jpg"
 }
 
 # ==========================================
@@ -253,19 +210,11 @@ if not st.session_state['logado']:
     st.button("Entrar", on_click=fazer_login)
     st.stop()
 
-# --- MENU LATERAL ---
+# --- MENU ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 2.6 (Calibrado)")
-    
-    opcao = st.radio("Ferramentas:", [
-        "📝 Gerador de Laudo",
-        "🔍 Identificador de Pragas", 
-        "📊 Mercado & Cotações",
-        "📏 Régua Fenológica",
-        "🤖 Chatbot Técnico"
-    ])
-    
+    st.caption("Versão PRO 2.7 (Sherlock Mode)")
+    opcao = st.radio("Ferramentas:", ["📝 Gerador de Laudo", "🔍 Identificador de Pragas", "📊 Mercado & Cotações", "📏 Régua Fenológica", "🤖 Chatbot Técnico"])
     st.markdown("---")
     if st.button("Sair"):
         st.session_state['logado'] = False
@@ -277,7 +226,6 @@ with st.sidebar:
 # --- 1. GERADOR DE LAUDO ---
 if opcao == "📝 Gerador de Laudo":
     st.title("📝 Gerador de Laudo")
-    
     t1, t2 = st.tabs(["🎙️ Gravar", "📂 Importar"])
     aud = None
     with t1: 
@@ -288,15 +236,10 @@ if opcao == "📝 Gerador de Laudo":
         if a: 
             st.audio(a)
             aud = a
-            
     fotos = st.file_uploader("Fotos da Vistoria", type=["jpg","png"], accept_multiple_files=True)
-    if fotos: st.write(f"{len(fotos)} fotos selecionadas.")
-
-    if aud:
-        st.warning("⚠️ **Revisão:** Confira se nomes comerciais (Ex: 'Áureo', 'Fox') foram transcritos corretamente antes de gerar o PDF.")
-
+    if aud: st.warning("⚠️ **Revisão:** Confira nomes comerciais antes de gerar.")
     if aud and st.button("Gerar PDF"):
-        if not api_key: st.error("Falta Chave API")
+        if not api_key: st.error("Falta API")
         else:
             with st.spinner("Analisando..."):
                 try:
@@ -315,60 +258,67 @@ if opcao == "📝 Gerador de Laudo":
                 except Exception as e: st.error(f"Erro: {e}")
 
 
-# --- 2. IDENTIFICADOR DE PRAGAS (CALIBRADO) ---
+# --- 2. IDENTIFICADOR (AGORA COM RACIOCÍNIO) ---
 elif opcao == "🔍 Identificador de Pragas":
     st.title("🔍 Detector Fitossanitário")
     
     st.markdown("""
     <div class="id-box">
-    ⚠️ <b>Aviso:</b> Ferramenta de triagem. A IA pode confundir sintomas parecidos (Ex: Ferrugem vs Septoria) dependendo da qualidade da foto.
+    ⚠️ <b>Aviso:</b> A IA tende a confundir Ferrugem com Mancha Parda em fotos sem zoom. Use o <b>Teste do Pano Branco</b> para confirmar.
     </div>
     """, unsafe_allow_html=True)
     
-    # 1. SELETOR DE CULTURA (CRUCIAL PARA NÃO ERRAR)
-    cultura_id = st.selectbox("Qual é a cultura?", ["🌱 Soja", "🌽 Milho", "☁️ Algodão", "🌾 Trigo", "🫘 Feijão", "Outra"])
+    cultura_id = st.selectbox("Qual é a cultura?", ["🌱 Soja", "🌽 Milho", "☁️ Algodão", "Outra"])
+    img_input = st.camera_input("📸 Foto (Tente focar bem)")
+    img_upload = st.file_uploader("Ou upload", type=["jpg","png","jpeg"])
+    arquivo = img_input if img_input else img_upload
     
-    img_camera = st.camera_input("📸 Tire foto (Preferência: Macro do verso da folha)")
-    img_upload = st.file_uploader("Ou carregue da galeria", type=["jpg","png","jpeg"])
-    
-    arquivo_para_analisar = img_camera if img_camera else img_upload
-    
-    if arquivo_para_analisar and st.button("🕵️ Analisar Problema"):
-        if not api_key: st.error("Falta Chave API")
+    if arquivo and st.button("🕵️ Analisar Problema"):
+        if not api_key: st.error("Falta API")
         else:
-            with st.spinner("Analisando imagem..."):
+            with st.spinner("Aplicando método diferencial..."):
                 try:
-                    img = Image.open(arquivo_para_analisar)
+                    img = Image.open(arquivo)
                     nome_modelo = descobrir_modelo(api_key)
                     genai.configure(api_key=api_key)
                     model = genai.GenerativeModel(nome_modelo)
                     
-                    # PROMPT CALIBRADO PARA DIFERENCIAR FERRUGEM
+                    # PROMPT "SHERLOCK HOLMES"
                     prompt_analise = f"""
-                    Atue como Fitopatologista Sênior.
-                    Contexto: Cultura de {cultura_id}.
+                    Atue como Fitopatologista Sênior. Cultura: {cultura_id}.
                     
-                    Analise a imagem. 
-                    - Se for Soja: DIFERENCIE cuidadosamente entre Ferrugem Asiática (pústulas elevadas, urédias) e Mancha Parda/Septoria (manchas necróticas planas irregulares).
-                    - Se não tiver certeza devido à qualidade da foto, liste as duas possibilidades.
+                    ANÁLISE DIFERENCIAL OBRIGATÓRIA (Passo a Passo):
+                    1. Observe se há pústulas (pontos elevados) ou apenas manchas planas necróticas.
+                    2. Observe se há halo amarelado forte (comum em Mancha Alvo/Parda) ou se é mais avermelhado (Ferrugem).
                     
-                    Responda neste formato:
-                    1. **Diagnóstico Provável:** (Nome da doença/praga)
-                    2. **Evidências Visuais:** (Descreva o que você viu: pústula, halo amarelo, necrose?)
-                    3. **Recomendação Técnica:** (Princípio ativo sugerido)
+                    REGRA DE OURO PARA SOJA:
+                    - Se parecerem pontos minúsculos avermelhados/marrons espalhados, considere FERRUGEM, mas ALERTE sobre a confusão com Septoria.
+                    - NÃO afirme ser Mancha Parda apenas por ser marrom. Analise o padrão de distribuição.
+                    
+                    Responda:
+                    1. **Hipótese Principal:**
+                    2. **Hipótese Secundária (Diagnóstico Diferencial):**
+                    3. **Por que cheguei a essa conclusão:** (Explique visualmente)
+                    4. **Como confirmar em campo:** (Ex: Teste do Pano Branco)
                     """
                     
                     resp = model.generate_content([prompt_analise, img])
-                    
-                    st.success("Análise Concluída")
                     st.write(resp.text)
-                    st.info("💡 Dica: Para Ferrugem, tente tirar foto da parte de baixo da folha (abaxial) bem de perto.")
                     
+                    # BOX TIRA-TEIMA (AJUDA HUMANA)
+                    if "Soja" in cultura_id:
+                        st.markdown("""
+                        <div class="tira-teima">
+                        💡 <b>Tira-Teima (Teste do Pano Branco):</b><br>
+                        A IA ficou em dúvida? Pegue um pano branco ou papel, molhe levemente e esfregue sobre as folhas do baixeiro.<br>
+                        - <b>Saiu um pó marrom/ferrugem no pano?</b> É Ferrugem (Esporos).<br>
+                        - <b>Não saiu nada?</b> Provavelmente é Mancha Parda ou Septoria.
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
                 except Exception as e:
-                    if "429" in str(e):
-                        st.warning("🚦 A IA está sobrecarregada. Aguarde 30 segundos.")
-                    else:
-                        st.error(f"Erro na análise: {e}")
+                    if "429" in str(e): st.warning("🚦 IA sobrecarregada. Aguarde 30s.")
+                    else: st.error(f"Erro: {e}")
 
 
 # --- 3. MERCADO ---
@@ -380,7 +330,6 @@ elif opcao == "📊 Mercado & Cotações":
     c3, c4 = st.columns(2)
     with c3: st.metric("Dólar (USD)", "R$ 5,04", "0.02 R$")
     with c4: st.metric("Boi Gordo (@)", "R$ 235,00", "-2.00 R$")
-    st.line_chart([132, 131, 130, 128, 129, 130, 128, 127, 128, 129])
 
 
 # --- 4. RÉGUA FENOLÓGICA ---
@@ -390,42 +339,29 @@ elif opcao == "📏 Régua Fenológica":
     st.divider()
     estadios = FENOLOGIA_TEXTOS[cultura]
     for nome, descricao in estadios.items():
-        st.markdown(f"""
-        <div class="feno-box">
-            <span class="feno-title">{nome}</span>
-            <span class="feno-desc">{descricao}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='feno-box'><span class='feno-title'>{nome}</span><span class='feno-desc'>{descricao}</span></div>", unsafe_allow_html=True)
     st.markdown("---")
     nome_arquivo = MAPA_IMAGENS.get(cultura)
     caminho_foto = os.path.join("img_fenologia", nome_arquivo)
-    st.subheader("📸 Escala Visual Completa")
     if os.path.exists(caminho_foto): st.image(caminho_foto, use_container_width=True)
-    else: st.info(f"Salve a imagem '{nome_arquivo}' na pasta 'img_fenologia'.")
+    else: st.info(f"Salve '{nome_arquivo}' na pasta.")
 
 
-# --- 5. CHATBOT TÉCNICO ---
+# --- 5. CHATBOT ---
 elif opcao == "🤖 Chatbot Técnico":
     st.title("🤖 Consultor IA")
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
-    
     for m in st.session_state["msgs"]: st.chat_message(m["role"]).write(m["content"])
-    
-    if p := st.chat_input("Dúvida técnica?"):
-        if not api_key: st.error("Falta API Key")
+    if p := st.chat_input("Dúvida?"):
+        if not api_key: st.error("Falta API")
         else:
             st.session_state["msgs"].append({"role": "user", "content": p})
             st.chat_message("user").write(p)
-            nome_modelo_chat = descobrir_modelo(api_key) 
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(nome_modelo_chat)
             try:
-                res = model.generate_content(f"Agrônomo Sênior respondendo curto: {p}").text
+                model = genai.GenerativeModel(descobrir_modelo(api_key))
+                res = model.generate_content(f"Agrônomo Sênior curto: {p}").text
                 st.session_state["msgs"].append({"role": "assistant", "content": res})
                 st.chat_message("assistant").write(res)
             except Exception as e:
-                if "429" in str(e):
-                    msg = "🚦 Tráfego intenso! Aguarde 10 segundos."
-                    st.session_state["msgs"].append({"role": "assistant", "content": msg})
-                    st.chat_message("assistant").write(msg)
+                if "429" in str(e): st.warning("🚦 Aguarde 10s.")
                 else: st.error(f"Erro: {e}")
