@@ -190,7 +190,7 @@ MAPA_IMAGENS = {
 # ==========================================
 # 🔐 LOGIN
 # ==========================================
-USUARIOS = {"admin": "agro123", "teste": "123"}
+USUARIOS = {"admin": "agro123", "teste": "123", "felpz": "f2025"}
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'usuario_atual' not in st.session_state: st.session_state['usuario_atual'] = ""
 
@@ -365,3 +365,4 @@ elif opcao == "🤖 Chatbot Técnico":
             except Exception as e:
                 if "429" in str(e): st.warning("🚦 Aguarde 10s.")
                 else: st.error(f"Erro: {e}")
+
