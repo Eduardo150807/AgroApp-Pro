@@ -36,7 +36,7 @@ st.markdown("""
         margin-top: 10px;
     }
     
-    /* RÉGUA FENOLÓGICA (VISUAL DARK) */
+    /* RÉGUA FENOLÓGICA */
     .feno-box {
         background-color: #1E3F20; 
         padding: 15px;
@@ -256,11 +256,11 @@ if not st.session_state['logado']:
 # --- MENU LATERAL ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 2.5 (Com Detector)")
+    st.caption("Versão PRO 2.6 (Calibrado)")
     
     opcao = st.radio("Ferramentas:", [
         "📝 Gerador de Laudo",
-        "🔍 Identificador de Pragas", # NOVO!
+        "🔍 Identificador de Pragas", 
         "📊 Mercado & Cotações",
         "📏 Régua Fenológica",
         "🤖 Chatbot Técnico"
@@ -315,61 +315,58 @@ if opcao == "📝 Gerador de Laudo":
                 except Exception as e: st.error(f"Erro: {e}")
 
 
-# --- 2. IDENTIFICADOR DE PRAGAS (A NOVIDADE) ---
+# --- 2. IDENTIFICADOR DE PRAGAS (CALIBRADO) ---
 elif opcao == "🔍 Identificador de Pragas":
     st.title("🔍 Detector Fitossanitário")
     
     st.markdown("""
     <div class="id-box">
-    ⚠️ <b>Aviso Importante:</b> Esta ferramenta usa Inteligência Artificial para triagem. 
-    O diagnóstico definitivo deve ser confirmado por análise laboratorial ou visita técnica presencial. 
-    A IA pode confundir deficiências nutricionais com doenças.
+    ⚠️ <b>Aviso:</b> Ferramenta de triagem. A IA pode confundir sintomas parecidos (Ex: Ferrugem vs Septoria) dependendo da qualidade da foto.
     </div>
     """, unsafe_allow_html=True)
     
-    # Câmera do Dispositivo
-    img_camera = st.camera_input("📸 Tire uma foto da folha, inseto ou sintoma")
+    # 1. SELETOR DE CULTURA (CRUCIAL PARA NÃO ERRAR)
+    cultura_id = st.selectbox("Qual é a cultura?", ["🌱 Soja", "🌽 Milho", "☁️ Algodão", "🌾 Trigo", "🫘 Feijão", "Outra"])
     
-    # Ou Upload de arquivo
-    img_upload = st.file_uploader("Ou carregue uma foto da galeria", type=["jpg","png","jpeg"])
+    img_camera = st.camera_input("📸 Tire foto (Preferência: Macro do verso da folha)")
+    img_upload = st.file_uploader("Ou carregue da galeria", type=["jpg","png","jpeg"])
     
     arquivo_para_analisar = img_camera if img_camera else img_upload
     
     if arquivo_para_analisar and st.button("🕵️ Analisar Problema"):
         if not api_key: st.error("Falta Chave API")
         else:
-            with st.spinner("A IA está examinando a imagem..."):
+            with st.spinner("Analisando imagem..."):
                 try:
-                    # 1. Prepara a imagem
                     img = Image.open(arquivo_para_analisar)
-                    
-                    # 2. Chama a IA
                     nome_modelo = descobrir_modelo(api_key)
                     genai.configure(api_key=api_key)
                     model = genai.GenerativeModel(nome_modelo)
                     
-                    prompt_analise = """
-                    Atue como um Engenheiro Agrônomo e Fitopatologista Sênior.
-                    Analise esta imagem detalhadamente.
-                    1. Identifique a provável praga, doença ou deficiência. Se não tiver certeza, liste as possibilidades.
-                    2. Descreva os sintomas visíveis na imagem que levaram a essa conclusão.
-                    3. Sugira medidas de manejo cultural e químico (princípios ativos) gerais.
-                    Se a imagem não for de uma planta, responda: 'Não identifiquei uma cultura agrícola nesta imagem'.
-                    Seja direto e técnico.
+                    # PROMPT CALIBRADO PARA DIFERENCIAR FERRUGEM
+                    prompt_analise = f"""
+                    Atue como Fitopatologista Sênior.
+                    Contexto: Cultura de {cultura_id}.
+                    
+                    Analise a imagem. 
+                    - Se for Soja: DIFERENCIE cuidadosamente entre Ferrugem Asiática (pústulas elevadas, urédias) e Mancha Parda/Septoria (manchas necróticas planas irregulares).
+                    - Se não tiver certeza devido à qualidade da foto, liste as duas possibilidades.
+                    
+                    Responda neste formato:
+                    1. **Diagnóstico Provável:** (Nome da doença/praga)
+                    2. **Evidências Visuais:** (Descreva o que você viu: pústula, halo amarelo, necrose?)
+                    3. **Recomendação Técnica:** (Princípio ativo sugerido)
                     """
                     
                     resp = model.generate_content([prompt_analise, img])
                     
-                    # 3. Mostra o resultado
                     st.success("Análise Concluída")
-                    st.markdown("### 📋 Diagnóstico da IA")
                     st.write(resp.text)
-                    
-                    st.info("💡 Dica: Se for doença, verifique o verso da folha também.")
+                    st.info("💡 Dica: Para Ferrugem, tente tirar foto da parte de baixo da folha (abaxial) bem de perto.")
                     
                 except Exception as e:
                     if "429" in str(e):
-                        st.warning("🚦 A IA está sobrecarregada. Aguarde 30 segundos e tente de novo.")
+                        st.warning("🚦 A IA está sobrecarregada. Aguarde 30 segundos.")
                     else:
                         st.error(f"Erro na análise: {e}")
 
