@@ -13,23 +13,17 @@ import PyPDF2
 # --- Configuração Visual ---
 st.set_page_config(page_title="AgroReport Pro", page_icon="🚜", layout="wide")
 
-# --- CSS POWER: ESCONDE MENUS E RODAPÉS DO STREAMLIT ---
+# --- CSS POWER: CORREÇÃO DO CHAT E MODO QUIOSQUE ---
 st.markdown("""
     <style>
-    /* ESCONDER O MENU SUPERIOR (3 PONTINHOS) E O RODAPÉ (MANAGE APP) */
+    /* ESCONDER MENUS DO STREAMLIT (MODO QUIOSQUE) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    
-    /* ESCONDER A BARRA DE FERRAMENTAS SUPERIOR (ONDE FICA O STOP/RERUN) */
     [data-testid="stToolbar"] {visibility: hidden !important;}
-    
-    /* AJUSTE PARA O CONTEÚDO SUBIR JÁ QUE A BARRA SUMIU */
-    .block-container {
-        padding-top: 1rem;
-    }
+    .block-container {padding-top: 1rem;}
 
-    /* Botões do App */
+    /* Botões */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
@@ -64,13 +58,46 @@ st.markdown("""
     .news-date { font-size: 0.8em; color: #aaa; margin-top: 5px; }
     a:hover { color: #81c784; }
 
-    /* Outros */
+    /* Estilos Gerais */
     .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; color: white !important; }
     .feno-title { font-size: 1.2em; font-weight: bold; color: #A5D6A7 !important; display: block; margin-bottom: 5px; }
     .feno-desc { font-size: 1.0em; color: #FFFFFF !important; font-weight: 500; }
     .id-box { background-color: #FFF3E0; border-left: 5px solid #FF9800; padding: 15px; border-radius: 5px; color: #E65100; margin-bottom: 20px; }
-    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; color: black !important; }
-    .chat-ai { background-color: #F1F8E9; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; color: black !important; }
+    
+    /* --- CORREÇÃO DEFINITIVA DO CHAT --- */
+    /* Balão do Usuário (Azul Claro, Letra Preta) */
+    .chat-user { 
+        text-align: right; 
+        background-color: #BBDEFB; 
+        color: #000000 !important; 
+        padding: 12px; 
+        border-radius: 15px 15px 0 15px; 
+        display: inline-block; 
+        margin: 5px 0 5px auto; /* Joga pra direita */
+        float: right;
+        clear: both;
+        max-width: 80%;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+    /* Balão da IA (Verde Claro, Letra Preta) */
+    .chat-ai { 
+        text-align: left;
+        background-color: #DCEDC8; 
+        color: #000000 !important; 
+        padding: 12px; 
+        border-radius: 15px 15px 15px 0; 
+        display: inline-block; 
+        margin: 5px auto 5px 0; /* Joga pra esquerda */
+        float: left;
+        clear: both;
+        max-width: 80%;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+    /* Container para limpar os floats */
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+    }
     
     </style>
     """, unsafe_allow_html=True)
@@ -249,9 +276,8 @@ if not st.session_state['logado']:
 # --- MENU ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.6")
+    st.caption("Versão PRO 3.7")
     
-    # Define o que cada um vê
     if st.session_state['tipo_usuario'] == 'admin':
         opcoes = [
             "📝 Gerador de Laudo", "📊 Mercado & Notícias", "🔍 Identificador + Debate", 
@@ -339,10 +365,11 @@ elif opcao == "🔍 Identificador + Debate":
                         except Exception as e: st.error(f"Erro: {e}")
     with col_chat:
         st.subheader("💬 Debate")
+        # Loop para mostrar as mensagens
         for msg in st.session_state["id_historico"]:
-            role_icon = "🤖" if msg["role"] == "assistant" else "👨‍🌾"
-            st.markdown(f"**{role_icon}:** {msg['content']}")
-            st.divider()
+            role_class = "chat-ai" if msg["role"] == "assistant" else "chat-user"
+            st.markdown(f"<div class='{role_class}'>{msg['content']}</div><div style='clear:both'></div>", unsafe_allow_html=True)
+            
         correcao = st.chat_input("Discorda? Comente aqui.")
         if correcao:
             if not api_key: st.error("API?")
@@ -362,9 +389,14 @@ elif opcao == "🤖 AgroChat (Com Fotos)":
     st.title("🤖 AgroChat")
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
     with st.expander("📸 Enviar foto"): foto_chat = st.file_uploader("Anexar", type=["jpg","png"], key="chat_img")
+    
+    # Exibe histórico do chat
+    st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
     for m in st.session_state["msgs"]: 
-        role = "chat-user" if m["role"] == "user" else "chat-ai"
-        st.markdown(f"<div class='{role}'>{m['content']}</div>", unsafe_allow_html=True)
+        role_class = "chat-user" if m["role"] == "user" else "chat-ai"
+        st.markdown(f"<div class='{role_class}'>{m['content']}</div><div style='clear:both'></div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     if p := st.chat_input("Pergunta?"):
         if not api_key: st.error("API?")
         else:
