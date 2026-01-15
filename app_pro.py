@@ -24,57 +24,46 @@ st.markdown("""
         background-color: #2E7D32;
         color: white;
         border: none;
-        transition: 0.3s;
     }
-    .stButton>button:hover {
-        background-color: #1B5E20;
-        transform: scale(1.02);
-    }
-    
-    /* CARD DE NOTÍCIA (NOVO DESIGN PREMIUM) */
-    .news-card {
-        background-color: #1E1E1E; /* Fundo Escuro */
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        border-left: 6px solid #2E7D32; /* Borda Verde */
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-        transition: 0.3s;
-    }
-    .news-card:hover {
-        background-color: #252525;
-        transform: translateX(5px);
-    }
-    .news-title {
-        font-size: 1.1em;
-        font-weight: bold;
-        color: #E0E0E0 !important;
+    .whatsapp-btn {
+        display: inline-block;
+        background-color: #25D366;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 10px;
         text-decoration: none;
-        display: block;
-        margin-bottom: 8px;
-    }
-    .news-title:hover {
-        color: #4CAF50 !important;
-    }
-    .news-date {
-        font-size: 0.85em;
-        color: #9E9E9E;
-        display: flex;
-        align-items: center;
-        gap: 5px;
+        font-weight: bold;
+        text-align: center;
+        width: 100%;
+        margin-top: 10px;
     }
     
-    /* Outros estilos */
-    .feno-box { background-color: #1b3a1d; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; color: white !important; }
+    /* Notícias */
+    .news-card {
+        background-color: #1a1a1a;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border-left: 4px solid #4CAF50;
+    }
+    .news-title { font-weight: bold; color: #fff; text-decoration: none; font-size: 1.1em; }
+    .news-date { font-size: 0.8em; color: #aaa; margin-top: 5px; }
+    a:hover { color: #81c784; }
+
+    /* Outros */
+    .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; }
+    .feno-title { font-size: 1.2em; font-weight: bold; color: #A5D6A7 !important; display: block; margin-bottom: 5px; }
+    .feno-desc { font-size: 1.0em; color: #FFFFFF !important; font-weight: 500; }
     .id-box { background-color: #FFF3E0; border-left: 5px solid #FF9800; padding: 15px; border-radius: 5px; color: #E65100; margin-bottom: 20px; }
-    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; }
+    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; }
+    .chat-ai { background-color: #F1F8E9; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; }
     
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🧠 FUNÇÕES
+# 🧠 FUNÇÕES GERAIS
 # ==========================================
 def descobrir_modelo(key):
     genai.configure(api_key=key)
@@ -101,7 +90,7 @@ def ler_pdf(arquivo):
         texto = ""
         for p in leitor.pages: texto += p.extract_text() + "\n"
         return texto
-    except Exception as e: return f"Erro: {e}"
+    except Exception as e: return f"Erro ao ler PDF: {e}"
 
 def carregar_noticias_agro():
     url = "https://news.google.com/rss/search?q=agronegocio+brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419"
@@ -110,7 +99,7 @@ def carregar_noticias_agro():
             tree = ET.parse(response)
             root = tree.getroot()
             noticias = []
-            for item in root.findall('./channel/item')[:8]: # Pegando 8 notícias
+            for item in root.findall('./channel/item')[:8]:
                 noticias.append({'titulo': item.find('title').text, 'link': item.find('link').text, 'data': item.find('pubDate').text})
             return noticias
     except: return []
@@ -241,7 +230,7 @@ if not st.session_state['logado']:
 # --- MENU LATERAL ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.2 (Visual Premium)")
+    st.caption("Versão PRO 3.4")
     opcao = st.radio("Ferramentas:", [
         "📝 Gerador de Laudo",
         "📊 Mercado & Notícias",
@@ -251,7 +240,6 @@ with st.sidebar:
         "💰 Finanças (Leitor NF)",
         "🇺🇸 Inglês Agro",
         "📚 Resumo Acadêmico (PDF)",
-        "🧮 Calculadoras Agro",
         "📏 Régua Fenológica"
     ])
     st.markdown("---")
@@ -287,7 +275,7 @@ if opcao == "📝 Gerador de Laudo":
                         with c2: st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(res_ed)}" target="_blank" class="whatsapp-btn">Zap</a>', unsafe_allow_html=True)
                 except Exception as e: st.error(f"Erro: {e}")
 
-# 2. MERCADO (VISUAL NOVO)
+# 2. MERCADO
 elif opcao == "📊 Mercado & Notícias":
     st.title("📊 Mercado & Notícias")
     c1, c2 = st.columns(2); c1.metric("Soja", "R$ 128,50", "-1.2"); c2.metric("Milho", "R$ 58,90", "0.5")
@@ -356,18 +344,19 @@ elif opcao == "🤖 AgroChat (Com Fotos)":
     st.title("🤖 AgroChat")
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
     with st.expander("📸 Enviar foto"): foto_chat = st.file_uploader("Anexar", type=["jpg","png"], key="chat_img")
-    for m in st.session_state["msgs"]: st.chat_message(m["role"]).write(m["content"])
+    for m in st.session_state["msgs"]: 
+        role = "chat-user" if m["role"] == "user" else "chat-ai"
+        st.markdown(f"<div class='{role}'>{m['content']}</div>", unsafe_allow_html=True)
     if p := st.chat_input("Pergunta?"):
         if not api_key: st.error("API?")
         else:
             st.session_state["msgs"].append({"role": "user", "content": p})
-            st.chat_message("user").write(p)
             try:
                 model = genai.GenerativeModel(descobrir_modelo(api_key))
                 cont = [p, Image.open(foto_chat)] if foto_chat else [p]
                 res = model.generate_content(cont).text
                 st.session_state["msgs"].append({"role": "assistant", "content": res})
-                st.chat_message("assistant").write(res)
+                st.rerun()
             except Exception as e: st.warning("🚦 Aguarde.")
 
 # 5. RESUMO ACADÊMICO
@@ -378,7 +367,8 @@ elif opcao == "📚 Resumo Acadêmico (PDF)":
         arq_pdf = st.file_uploader("PDF", type=["pdf"])
         if arq_pdf: 
             txt = ler_pdf(arq_pdf)
-            st.info(f"PDF Lido. {len(txt)} caracteres.")
+            if "Erro" in txt: st.error(txt + " (Atualize requirements.txt!)")
+            else: st.info(f"PDF Lido. {len(txt)} caracteres.")
     with aba2: arq_foto = st.file_uploader("Foto", type=["jpg","png"])
     
     if st.button("Resumir"):
@@ -430,22 +420,7 @@ elif opcao == "🇺🇸 Inglês Agro":
                 st.success(model.generate_content(f"Traduza tecnicamente: {txt}").text)
             except Exception as e: st.error(f"Erro: {e}")
 
-# 9. CALCULADORAS
-elif opcao == "🧮 Calculadoras Agro":
-    st.title("🧮 Calculadoras")
-    tipo = st.selectbox("Tipo:", ["Plantabilidade", "Pulverização"])
-    if tipo == "Plantabilidade":
-        pop = st.number_input("População", value=300000)
-        esp = st.number_input("Espaçamento", value=45.0)
-        germ = st.number_input("Germinação", value=90)
-        if st.button("Calcular"): st.metric("Sementes/m", f"{(pop/(10000/(esp/100))/(germ/100)):.1f}")
-    else:
-        tnq = st.number_input("Tanque", value=2000)
-        vaz = st.number_input("Vazão", value=150)
-        dose = st.number_input("Dose", value=0.5)
-        if st.button("Calcular"): st.metric("Prod/Tanque", f"{(tnq/vaz)*dose:.2f} L")
-
-# 10. RÉGUA
+# 9. RÉGUA
 elif opcao == "📏 Régua Fenológica":
     st.title("📏 Fenologia")
     c = st.selectbox("Cultura", list(FENOLOGIA_TEXTOS.keys()))
