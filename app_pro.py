@@ -13,9 +13,23 @@ import PyPDF2
 # --- Configuração Visual ---
 st.set_page_config(page_title="AgroReport Pro", page_icon="🚜", layout="wide")
 
+# --- CSS POWER: ESCONDE MENUS E RODAPÉS DO STREAMLIT ---
 st.markdown("""
     <style>
-    /* Botões */
+    /* ESCONDER O MENU SUPERIOR (3 PONTINHOS) E O RODAPÉ (MANAGE APP) */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* ESCONDER A BARRA DE FERRAMENTAS SUPERIOR (ONDE FICA O STOP/RERUN) */
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    
+    /* AJUSTE PARA O CONTEÚDO SUBIR JÁ QUE A BARRA SUMIU */
+    .block-container {
+        padding-top: 1rem;
+    }
+
+    /* Botões do App */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
@@ -51,14 +65,13 @@ st.markdown("""
     a:hover { color: #81c784; }
 
     /* Outros */
-    .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; }
+    .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; color: white !important; }
     .feno-title { font-size: 1.2em; font-weight: bold; color: #A5D6A7 !important; display: block; margin-bottom: 5px; }
     .feno-desc { font-size: 1.0em; color: #FFFFFF !important; font-weight: 500; }
     .id-box { background-color: #FFF3E0; border-left: 5px solid #FF9800; padding: 15px; border-radius: 5px; color: #E65100; margin-bottom: 20px; }
-    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; }
-    .chat-ai { background-color: #F1F8E9; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; }
+    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; color: black !important; }
+    .chat-ai { background-color: #F1F8E9; padding: 10px; border-radius: 10px; display: inline-block; margin: 5px 0; color: black !important; }
     
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -205,18 +218,24 @@ MAPA_IMAGENS = {
 }
 
 # ==========================================
-# 🔐 LOGIN AUTOMÁTICO
+# 🔐 LOGIN
 # ==========================================
-USUARIOS = {"admin": "agro123", "teste": "123", "felpz": "f2025"}
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'usuario_atual' not in st.session_state: st.session_state['usuario_atual'] = ""
+if 'tipo_usuario' not in st.session_state: st.session_state['tipo_usuario'] = ""
+
+CREDENCIAIS = {
+    "Eduardo Dev": {"senha": "Eduardo2007", "tipo": "admin"},
+    "felpz":       {"senha": "f2025",       "tipo": "cliente"}
+}
 
 def fazer_login():
     u = st.session_state.get('w_u', '')
     s = st.session_state.get('w_p', '')
-    if u in USUARIOS and USUARIOS[u] == s:
+    if u in CREDENCIAIS and CREDENCIAIS[u]["senha"] == s:
         st.session_state['logado'] = True
         st.session_state['usuario_atual'] = u
+        st.session_state['tipo_usuario'] = CREDENCIAIS[u]["tipo"]
         st.rerun()
     else: st.error("Erro.")
 
@@ -227,34 +246,30 @@ if not st.session_state['logado']:
     st.button("Entrar", on_click=fazer_login)
     st.stop()
 
-# --- MENU LATERAL ---
+# --- MENU ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.5 (Auto Login)")
-    opcao = st.radio("Ferramentas:", [
-        "📝 Gerador de Laudo",
-        "📊 Mercado & Notícias",
-        "🔍 Identificador + Debate", 
-        "🤖 AgroChat (Com Fotos)",
-        "🧪 Análise de Solo",
-        "💰 Finanças (Leitor NF)",
-        "🇺🇸 Inglês Agro",
-        "📚 Resumo Acadêmico (PDF)",
-        "📏 Régua Fenológica"
-    ])
+    st.caption("Versão PRO 3.6")
+    
+    # Define o que cada um vê
+    if st.session_state['tipo_usuario'] == 'admin':
+        opcoes = [
+            "📝 Gerador de Laudo", "📊 Mercado & Notícias", "🔍 Identificador + Debate", 
+            "🤖 AgroChat (Com Fotos)", "🧪 Análise de Solo", "💰 Finanças (Leitor NF)",
+            "🇺🇸 Inglês Agro", "📚 Resumo Acadêmico (PDF)", "📏 Régua Fenológica"
+        ]
+    else:
+        opcoes = ["📊 Mercado & Notícias", "🤖 AgroChat (Com Fotos)", "🔍 Identificador + Debate", "📏 Régua Fenológica"]
+        
+    opcao = st.radio("Ferramentas:", opcoes)
     st.markdown("---")
     if st.button("Sair"):
         st.session_state['logado'] = False
         st.rerun()
-    st.markdown("---")
     
-    # --- AQUI ESTÁ A MÁGICA DO LOGIN AUTOMÁTICO ---
-    # O app tenta achar a chave nos "Segredos" do sistema
-    if "GOOGLE_API_KEY" in st.secrets:
-        api_key = st.secrets["GOOGLE_API_KEY"]
-        st.success("🔑 Chave API Carregada!")
-    else:
-        # Se não achar (ainda não configurou), pede para digitar
+    if "GOOGLE_API_KEY" in st.secrets: api_key = st.secrets["GOOGLE_API_KEY"]
+    else: 
+        st.markdown("---")
         api_key = st.text_input("Chave Google:", type="password")
 
 
@@ -296,12 +311,7 @@ elif opcao == "📊 Mercado & Notícias":
         col1, col2 = st.columns(2)
         for i, news in enumerate(noticias):
             with (col1 if i % 2 == 0 else col2):
-                st.markdown(f"""
-                <div class="news-card">
-                    <a href="{news['link']}" target="_blank" class="news-title">{news['titulo']}</a>
-                    <div class="news-date">🕒 {news['data']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="news-card"><a href="{news['link']}" target="_blank" class="news-title">{news['titulo']}</a><div class="news-date">🕒 {news['data']}</div></div>""", unsafe_allow_html=True)
     else: st.info("Sem notícias no momento.")
 
 # 3. IDENTIFICADOR
@@ -378,7 +388,6 @@ elif opcao == "📚 Resumo Acadêmico (PDF)":
             if "Erro" in txt: st.error(txt + " (Atualize requirements.txt!)")
             else: st.info(f"PDF Lido. {len(txt)} caracteres.")
     with aba2: arq_foto = st.file_uploader("Foto", type=["jpg","png"])
-    
     if st.button("Resumir"):
         if not api_key: st.error("API?")
         else:
@@ -435,4 +444,3 @@ elif opcao == "📏 Régua Fenológica":
     for n,d in FENOLOGIA_TEXTOS[c].items(): st.markdown(f"<div class='feno-box'><b>{n}</b><br>{d}</div>", unsafe_allow_html=True)
     img = os.path.join("img_fenologia", MAPA_IMAGENS.get(c))
     if os.path.exists(img): st.image(img, use_container_width=True)
-
