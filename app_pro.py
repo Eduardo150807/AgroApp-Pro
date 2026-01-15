@@ -205,9 +205,9 @@ MAPA_IMAGENS = {
 }
 
 # ==========================================
-# 🔐 LOGIN
+# 🔐 LOGIN AUTOMÁTICO
 # ==========================================
-USUARIOS = {"admin": "agro123", "teste": "123", "felpz": "f2025"}
+USUARIOS = {"admin": "agro123", "teste": "123"}
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'usuario_atual' not in st.session_state: st.session_state['usuario_atual'] = ""
 
@@ -230,7 +230,7 @@ if not st.session_state['logado']:
 # --- MENU LATERAL ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.4")
+    st.caption("Versão PRO 3.5 (Auto Login)")
     opcao = st.radio("Ferramentas:", [
         "📝 Gerador de Laudo",
         "📊 Mercado & Notícias",
@@ -247,7 +247,15 @@ with st.sidebar:
         st.session_state['logado'] = False
         st.rerun()
     st.markdown("---")
-    api_key = st.text_input("Chave Google:", type="password")
+    
+    # --- AQUI ESTÁ A MÁGICA DO LOGIN AUTOMÁTICO ---
+    # O app tenta achar a chave nos "Segredos" do sistema
+    if "GOOGLE_API_KEY" in st.secrets:
+        api_key = st.secrets["GOOGLE_API_KEY"]
+        st.success("🔑 Chave API Carregada!")
+    else:
+        # Se não achar (ainda não configurou), pede para digitar
+        api_key = st.text_input("Chave Google:", type="password")
 
 
 # 1. GERADOR
@@ -427,4 +435,3 @@ elif opcao == "📏 Régua Fenológica":
     for n,d in FENOLOGIA_TEXTOS[c].items(): st.markdown(f"<div class='feno-box'><b>{n}</b><br>{d}</div>", unsafe_allow_html=True)
     img = os.path.join("img_fenologia", MAPA_IMAGENS.get(c))
     if os.path.exists(img): st.image(img, use_container_width=True)
-
