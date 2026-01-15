@@ -65,7 +65,6 @@ st.markdown("""
     .id-box { background-color: #FFF3E0; border-left: 5px solid #FF9800; padding: 15px; border-radius: 5px; color: #E65100; margin-bottom: 20px; }
     
     /* --- CORREÇÃO DEFINITIVA DO CHAT --- */
-    /* Balão do Usuário (Azul Claro, Letra Preta) */
     .chat-user { 
         text-align: right; 
         background-color: #BBDEFB; 
@@ -73,13 +72,12 @@ st.markdown("""
         padding: 12px; 
         border-radius: 15px 15px 0 15px; 
         display: inline-block; 
-        margin: 5px 0 5px auto; /* Joga pra direita */
+        margin: 5px 0 5px auto;
         float: right;
         clear: both;
         max-width: 80%;
         box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
     }
-    /* Balão da IA (Verde Claro, Letra Preta) */
     .chat-ai { 
         text-align: left;
         background-color: #DCEDC8; 
@@ -87,17 +85,13 @@ st.markdown("""
         padding: 12px; 
         border-radius: 15px 15px 15px 0; 
         display: inline-block; 
-        margin: 5px auto 5px 0; /* Joga pra esquerda */
+        margin: 5px auto 5px 0;
         float: left;
         clear: both;
         max-width: 80%;
         box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
     }
-    /* Container para limpar os floats */
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-    }
+    .chat-container { display: flex; flex-direction: column; }
     
     </style>
     """, unsafe_allow_html=True)
@@ -251,9 +245,10 @@ if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'usuario_atual' not in st.session_state: st.session_state['usuario_atual'] = ""
 if 'tipo_usuario' not in st.session_state: st.session_state['tipo_usuario'] = ""
 
+# AQUI ESTÁ A MUDANÇA: FELPZ AGORA É ADMIN TAMBÉM
 CREDENCIAIS = {
     "Eduardo Dev": {"senha": "Eduardo2007", "tipo": "admin"},
-    "felpz":       {"senha": "f2025",       "tipo": "cliente"}
+    "felpz":       {"senha": "f2025",       "tipo": "admin"} 
 }
 
 def fazer_login():
@@ -276,8 +271,9 @@ if not st.session_state['logado']:
 # --- MENU ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.7")
+    st.caption("Versão PRO 3.8")
     
+    # Se for ADMIN, vê tudo. Como agora os dois são admin, os dois veem tudo.
     if st.session_state['tipo_usuario'] == 'admin':
         opcoes = [
             "📝 Gerador de Laudo", "📊 Mercado & Notícias", "🔍 Identificador + Debate", 
@@ -285,6 +281,7 @@ with st.sidebar:
             "🇺🇸 Inglês Agro", "📚 Resumo Acadêmico (PDF)", "📏 Régua Fenológica"
         ]
     else:
+        # Esse caso 'else' agora só serviria se você criar um terceiro usuário 'cliente' no futuro
         opcoes = ["📊 Mercado & Notícias", "🤖 AgroChat (Com Fotos)", "🔍 Identificador + Debate", "📏 Régua Fenológica"]
         
     opcao = st.radio("Ferramentas:", opcoes)
@@ -365,11 +362,9 @@ elif opcao == "🔍 Identificador + Debate":
                         except Exception as e: st.error(f"Erro: {e}")
     with col_chat:
         st.subheader("💬 Debate")
-        # Loop para mostrar as mensagens
         for msg in st.session_state["id_historico"]:
             role_class = "chat-ai" if msg["role"] == "assistant" else "chat-user"
             st.markdown(f"<div class='{role_class}'>{msg['content']}</div><div style='clear:both'></div>", unsafe_allow_html=True)
-            
         correcao = st.chat_input("Discorda? Comente aqui.")
         if correcao:
             if not api_key: st.error("API?")
@@ -390,7 +385,6 @@ elif opcao == "🤖 AgroChat (Com Fotos)":
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
     with st.expander("📸 Enviar foto"): foto_chat = st.file_uploader("Anexar", type=["jpg","png"], key="chat_img")
     
-    # Exibe histórico do chat
     st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
     for m in st.session_state["msgs"]: 
         role_class = "chat-user" if m["role"] == "user" else "chat-ai"
