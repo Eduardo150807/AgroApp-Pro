@@ -8,7 +8,7 @@ from fpdf import FPDF
 import datetime
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
-import PyPDF2 # Biblioteca nova para ler PDF
+import PyPDF2
 
 # --- Configuração Visual ---
 st.set_page_config(page_title="AgroReport Pro", page_icon="🚜", layout="wide")
@@ -24,37 +24,57 @@ st.markdown("""
         background-color: #2E7D32;
         color: white;
         border: none;
+        transition: 0.3s;
     }
-    .whatsapp-btn {
-        display: inline-block;
-        background-color: #25D366;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 10px;
-        text-decoration: none;
+    .stButton>button:hover {
+        background-color: #1B5E20;
+        transform: scale(1.02);
+    }
+    
+    /* CARD DE NOTÍCIA (NOVO DESIGN PREMIUM) */
+    .news-card {
+        background-color: #1E1E1E; /* Fundo Escuro */
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        border-left: 6px solid #2E7D32; /* Borda Verde */
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        transition: 0.3s;
+    }
+    .news-card:hover {
+        background-color: #252525;
+        transform: translateX(5px);
+    }
+    .news-title {
+        font-size: 1.1em;
         font-weight: bold;
-        text-align: center;
-        width: 100%;
-        margin-top: 10px;
+        color: #E0E0E0 !important;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 8px;
+    }
+    .news-title:hover {
+        color: #4CAF50 !important;
+    }
+    .news-date {
+        font-size: 0.85em;
+        color: #9E9E9E;
+        display: flex;
+        align-items: center;
+        gap: 5px;
     }
     
-    /* Boxes Coloridos */
-    .feno-box { background-color: #1E3F20; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; }
-    .feno-title { font-size: 1.2em; font-weight: bold; color: #A5D6A7 !important; display: block; margin-bottom: 5px; }
-    .feno-desc { font-size: 1.0em; color: #FFFFFF !important; font-weight: 500; }
-    
+    /* Outros estilos */
+    .feno-box { background-color: #1b3a1d; padding: 15px; border-radius: 8px; margin-bottom: 8px; border-left: 6px solid #4CAF50; color: white !important; }
     .id-box { background-color: #FFF3E0; border-left: 5px solid #FF9800; padding: 15px; border-radius: 5px; color: #E65100; margin-bottom: 20px; }
-    .solo-box { background-color: #E0F2F1; border-left: 5px solid #009688; padding: 15px; border-radius: 5px; color: #004D40; margin-bottom: 20px; }
-    .calc-box { background-color: #ECEFF1; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #CFD8DC; }
-    .chat-user { background-color: #E3F2FD; padding: 10px; border-radius: 10px; margin: 5px 0; text-align: right; }
-    .chat-ai { background-color: #F1F8E9; padding: 10px; border-radius: 10px; margin: 5px 0; }
-
+    .chat-user { text-align: right; background-color: #E3F2FD; padding: 10px; border-radius: 10px; display: inline-block; }
+    
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🧠 FUNÇÕES GERAIS
+# 🧠 FUNÇÕES
 # ==========================================
 def descobrir_modelo(key):
     genai.configure(api_key=key)
@@ -76,15 +96,12 @@ def forcar_termos_tecnicos(texto):
     return texto
 
 def ler_pdf(arquivo):
-    """Extrai texto de arquivos PDF"""
     try:
         leitor = PyPDF2.PdfReader(arquivo)
-        texto_completo = ""
-        for pagina in leitor.pages:
-            texto_completo += pagina.extract_text() + "\n"
-        return texto_completo
-    except Exception as e:
-        return f"Erro ao ler PDF: {e}"
+        texto = ""
+        for p in leitor.pages: texto += p.extract_text() + "\n"
+        return texto
+    except Exception as e: return f"Erro: {e}"
 
 def carregar_noticias_agro():
     url = "https://news.google.com/rss/search?q=agronegocio+brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419"
@@ -93,7 +110,7 @@ def carregar_noticias_agro():
             tree = ET.parse(response)
             root = tree.getroot()
             noticias = []
-            for item in root.findall('./channel/item')[:6]:
+            for item in root.findall('./channel/item')[:8]: # Pegando 8 notícias
                 noticias.append({'titulo': item.find('title').text, 'link': item.find('link').text, 'data': item.find('pubDate').text})
             return noticias
     except: return []
@@ -132,8 +149,7 @@ def processar_laudo(audio_file, lista_imagens, key):
         except: pass
         return texto_limpo
     except Exception as e:
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            return "⚠️ **ERRO DE COTA:** A IA está 'cansada'. Aguarde 30 segundos."
+        if "429" in str(e): return "⚠️ **ERRO DE COTA:** A IA está 'cansada'. Aguarde 30 segundos."
         else: raise e
 
 # ==========================================
@@ -225,16 +241,16 @@ if not st.session_state['logado']:
 # --- MENU LATERAL ---
 with st.sidebar:
     st.header(f"Olá, {st.session_state['usuario_atual']}")
-    st.caption("Versão PRO 3.1")
+    st.caption("Versão PRO 3.2 (Visual Premium)")
     opcao = st.radio("Ferramentas:", [
         "📝 Gerador de Laudo",
-        "🔍 Identificador + Debate", # NOME NOVO
-        "🤖 AgroChat (Com Fotos)", # NOME NOVO
         "📊 Mercado & Notícias",
+        "🔍 Identificador + Debate", 
+        "🤖 AgroChat (Com Fotos)",
         "🧪 Análise de Solo",
         "💰 Finanças (Leitor NF)",
         "🇺🇸 Inglês Agro",
-        "📚 Resumo Acadêmico (PDF)", # NOME NOVO
+        "📚 Resumo Acadêmico (PDF)",
         "🧮 Calculadoras Agro",
         "📏 Régua Fenológica"
     ])
@@ -246,7 +262,7 @@ with st.sidebar:
     api_key = st.text_input("Chave Google:", type="password")
 
 
-# 1. GERADOR DE LAUDO
+# 1. GERADOR
 if opcao == "📝 Gerador de Laudo":
     st.title("📝 Gerador de Laudo")
     t1, t2 = st.tabs(["🎙️ Gravar", "📂 Importar"])
@@ -271,213 +287,165 @@ if opcao == "📝 Gerador de Laudo":
                         with c2: st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(res_ed)}" target="_blank" class="whatsapp-btn">Zap</a>', unsafe_allow_html=True)
                 except Exception as e: st.error(f"Erro: {e}")
 
-# 2. IDENTIFICADOR COM MINI CHAT (DEBATE)
+# 2. MERCADO (VISUAL NOVO)
+elif opcao == "📊 Mercado & Notícias":
+    st.title("📊 Mercado & Notícias")
+    c1, c2 = st.columns(2); c1.metric("Soja", "R$ 128,50", "-1.2"); c2.metric("Milho", "R$ 58,90", "0.5")
+    c3, c4 = st.columns(2); c3.metric("Dólar", "R$ 5,04", "0.02"); c4.metric("Boi", "R$ 235", "-2.0")
+    st.markdown("---")
+    st.subheader("📰 Manchetes do Agro")
+    if st.button("🔄 Atualizar"): st.rerun()
+    noticias = carregar_noticias_agro()
+    if noticias:
+        col1, col2 = st.columns(2)
+        for i, news in enumerate(noticias):
+            with (col1 if i % 2 == 0 else col2):
+                st.markdown(f"""
+                <div class="news-card">
+                    <a href="{news['link']}" target="_blank" class="news-title">{news['titulo']}</a>
+                    <div class="news-date">🕒 {news['data']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+    else: st.info("Sem notícias no momento.")
+
+# 3. IDENTIFICADOR
 elif opcao == "🔍 Identificador + Debate":
-    st.title("🔍 Detector com Debate Técnico")
-    st.markdown("""<div class="id-box">⚠️ <b>Aviso:</b> Ferramenta de triagem. A IA pode errar. Se discordar, debata com ela abaixo.</div>""", unsafe_allow_html=True)
-    
-    # Memória do Identificador
+    st.title("🔍 Detector Fitossanitário")
+    st.markdown("""<div class="id-box">⚠️ <b>Aviso:</b> Ferramenta de triagem.</div>""", unsafe_allow_html=True)
     if "id_historico" not in st.session_state: st.session_state["id_historico"] = []
     if "id_imagem_atual" not in st.session_state: st.session_state["id_imagem_atual"] = None
-
     col_img, col_chat = st.columns([1, 1])
-    
     with col_img:
         cultura_id = st.selectbox("Cultura:", ["🌱 Soja", "🌽 Milho", "☁️ Algodão", "Outra"])
-        img_input = st.camera_input("📸 Foto")
-        img_upload = st.file_uploader("Ou upload", type=["jpg","png","jpeg"])
-        arquivo = img_input if img_input else img_upload
-        
+        arquivo = st.camera_input("📸 Foto") or st.file_uploader("Upload", type=["jpg","png"])
         if arquivo:
-            # Salva imagem na sessão para não sumir
             st.session_state["id_imagem_atual"] = Image.open(arquivo)
-            st.image(st.session_state["id_imagem_atual"], caption="Imagem em Análise", width=300)
-            
-            if st.button("🔎 Analisar Inicial"):
+            st.image(st.session_state["id_imagem_atual"], width=300)
+            if st.button("🔎 Analisar"):
                 if not api_key: st.error("Falta API")
                 else:
                     with st.spinner("Analisando..."):
                         try:
                             model = genai.GenerativeModel(descobrir_modelo(api_key))
-                            prompt = f"Atue como Fitopatologista. Cultura: {cultura_id}. Analise a imagem. Responda: Diagnóstico, Evidências e Recomendação."
+                            prompt = f"Atue como Fitopatologista. Cultura: {cultura_id}. Analise imagem. Responda: Diagnóstico, Evidências e Recomendação."
                             res = model.generate_content([prompt, st.session_state["id_imagem_atual"]]).text
-                            st.session_state["id_historico"] = [{"role": "assistant", "content": res}] # Reseta chat com nova análise
+                            st.session_state["id_historico"] = [{"role": "assistant", "content": res}]
                         except Exception as e: st.error(f"Erro: {e}")
-
     with col_chat:
-        st.subheader("💬 Debate Técnico")
-        # Mostra histórico
+        st.subheader("💬 Debate")
         for msg in st.session_state["id_historico"]:
             role_icon = "🤖" if msg["role"] == "assistant" else "👨‍🌾"
             st.markdown(f"**{role_icon}:** {msg['content']}")
             st.divider()
-            
-        # Input do Debate
-        correcao = st.chat_input("Discorda? Digite: 'Não, isso é Mancha Alvo porque...'")
+        correcao = st.chat_input("Discorda? Comente aqui.")
         if correcao:
-            if not api_key: st.error("Falta API")
-            elif not st.session_state["id_imagem_atual"]: st.error("Precisa de uma imagem primeiro.")
+            if not api_key: st.error("API?")
+            elif not st.session_state["id_imagem_atual"]: st.error("Falta Imagem")
             else:
                 st.session_state["id_historico"].append({"role": "user", "content": correcao})
                 with st.spinner("Reavaliando..."):
                     try:
                         model = genai.GenerativeModel(descobrir_modelo(api_key))
-                        # Envia histórico + imagem + nova correção
-                        prompt_debate = f"O usuário discordou/comentou: '{correcao}'. Reanalise a imagem considerando isso. Seja técnico."
-                        res = model.generate_content([prompt_debate, st.session_state["id_imagem_atual"]]).text
+                        res = model.generate_content([f"Usuário disse: '{correcao}'. Reanalise.", st.session_state["id_imagem_atual"]]).text
                         st.session_state["id_historico"].append({"role": "assistant", "content": res})
                         st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-# 3. AGROCHAT (MULTIMODAL)
+# 4. AGROCHAT
 elif opcao == "🤖 AgroChat (Com Fotos)":
     st.title("🤖 AgroChat")
     if "msgs" not in st.session_state: st.session_state["msgs"] = []
-    
-    # Área de Upload dentro do Chat
-    with st.expander("📸 Enviar foto para o Chat (Opcional)"):
-        foto_chat = st.file_uploader("Anexar imagem", type=["jpg","png","jpeg"], key="chat_img")
-    
-    for m in st.session_state["msgs"]: 
-        role = "user" if m["role"] == "user" else "assistant"
-        st.chat_message(role).write(m["content"])
-        
-    if p := st.chat_input("Pergunta técnica..."):
+    with st.expander("📸 Enviar foto"): foto_chat = st.file_uploader("Anexar", type=["jpg","png"], key="chat_img")
+    for m in st.session_state["msgs"]: st.chat_message(m["role"]).write(m["content"])
+    if p := st.chat_input("Pergunta?"):
         if not api_key: st.error("API?")
         else:
             st.session_state["msgs"].append({"role": "user", "content": p})
             st.chat_message("user").write(p)
             try:
                 model = genai.GenerativeModel(descobrir_modelo(api_key))
-                conteudo = [p]
-                if foto_chat:
-                    img = Image.open(foto_chat)
-                    conteudo.append(img)
-                    st.image(img, width=200, caption="Imagem enviada")
-                
-                res = model.generate_content(conteudo).text
+                cont = [p, Image.open(foto_chat)] if foto_chat else [p]
+                res = model.generate_content(cont).text
                 st.session_state["msgs"].append({"role": "assistant", "content": res})
                 st.chat_message("assistant").write(res)
             except Exception as e: st.warning("🚦 Aguarde.")
 
-# 4. CALCULADORAS (MAIS OPÇÕES)
-elif opcao == "🧮 Calculadoras Agro":
-    st.title("🧮 Calculadoras")
-    tipo = st.selectbox("Escolha:", ["Plantabilidade", "Pulverização", "Calagem (NC)", "Estimativa Produtividade"])
-    
-    if tipo == "Plantabilidade":
-        st.markdown("<div class='calc-box'>Sementes por metro.</div>", unsafe_allow_html=True)
-        pop = st.number_input("População (pl/ha)", value=300000)
-        esp = st.number_input("Espaçamento (cm)", value=45.0)
-        germ = st.number_input("Germinação (%)", value=90)
-        if st.button("Calcular"):
-            st.metric("Sementes/metro", f"{(pop / (10000/(esp/100)) / (germ/100)):.1f}")
-            
-    elif tipo == "Pulverização":
-        st.markdown("<div class='calc-box'>Volume de Calda.</div>", unsafe_allow_html=True)
-        tnq = st.number_input("Tanque (L)", value=2000)
-        vaz = st.number_input("Vazão (L/ha)", value=150)
-        dose = st.number_input("Dose (L/ha)", value=0.5)
-        if st.button("Calcular"):
-            st.metric("Prod. no Tanque", f"{(tnq/vaz)*dose:.2f} L")
-            
-    elif tipo == "Calagem (NC)":
-        st.markdown("<div class='calc-box'>Necessidade de Calagem (Ton/ha).</div>", unsafe_allow_html=True)
-        v2 = st.number_input("V% Desejado (V2):", value=60)
-        v1 = st.number_input("V% Atual (V1 - Análise):", value=30)
-        ctc = st.number_input("CTC (T) da Análise:", value=10.0)
-        prnt = st.number_input("PRNT do Calcário (%):", value=85)
-        if st.button("Calcular Calagem"):
-            # Fórmula: NC = (V2 - V1) * CTC / PRNT
-            nc = ((v2 - v1) * ctc) / prnt
-            st.metric("Aplicar (Ton/ha)", f"{nc:.2f} Ton/ha")
-            
-    elif tipo == "Estimativa Produtividade":
-        st.markdown("<div class='calc-box'>Estimativa Milho (Sacas/ha).</div>", unsafe_allow_html=True)
-        espigas_metro = st.number_input("Espigas em 10m lineares:", value=50) / 10
-        fileiras_espiga = st.number_input("Nº Fileiras na Espiga:", value=16)
-        graos_fileira = st.number_input("Grãos por Fileira:", value=35)
-        peso_mil_graos = st.number_input("Peso Mil Grãos (g) - Médio 300g:", value=300)
-        espacamento_m = st.number_input("Espaçamento (m):", value=0.45)
-        
-        if st.button("Estimar"):
-            # Plantas/ha
-            plantas_ha = (10000 / espacamento_m) * espigas_metro
-            graos_espiga = fileiras_espiga * graos_fileira
-            peso_espiga_g = (graos_espiga * peso_mil_graos) / 1000
-            prod_kg_ha = (plantas_ha * peso_espiga_g) / 1000
-            sacas = prod_kg_ha / 60
-            st.metric("Estimativa", f"{sacas:.1f} Sc/ha")
-
-# 5. RESUMO ACADÊMICO (COM PDF)
-elif opcao == "📚 Resumo Acadêmico":
+# 5. RESUMO ACADÊMICO
+elif opcao == "📚 Resumo Acadêmico (PDF)":
     st.title("📚 Resumo de Estudos")
-    aba1, aba2 = st.tabs(["📄 Upload Arquivo (PDF)", "📸 Foto Página"])
+    aba1, aba2 = st.tabs(["📄 PDF", "📸 Foto"])
+    with aba1: 
+        arq_pdf = st.file_uploader("PDF", type=["pdf"])
+        if arq_pdf: 
+            txt = ler_pdf(arq_pdf)
+            st.info(f"PDF Lido. {len(txt)} caracteres.")
+    with aba2: arq_foto = st.file_uploader("Foto", type=["jpg","png"])
     
-    texto_extraido = ""
-    
-    with aba1:
-        arq_pdf = st.file_uploader("PDF do Artigo", type=["pdf"])
-        if arq_pdf:
-            texto_extraido = ler_pdf(arq_pdf)
-            st.success(f"PDF lido! {len(texto_extraido)} caracteres.")
-            
-    with aba2:
-        arq_foto = st.file_uploader("Foto da Página", type=["jpg","png"])
-        
-    if st.button("Resumir Conteúdo"):
-        if not api_key: st.error("Falta API")
+    if st.button("Resumir"):
+        if not api_key: st.error("API?")
         else:
-            with st.spinner("Estudando..."):
+            with st.spinner("Lendo..."):
                 try:
                     model = genai.GenerativeModel(descobrir_modelo(api_key))
-                    prompt = "Resuma este material técnico para um agrônomo de campo. O que é aplicável na prática?"
-                    
-                    if arq_foto:
-                        # Se for foto
-                        res = model.generate_content([prompt, Image.open(arq_foto)]).text
-                    elif texto_extraido:
-                        # Se for PDF (Texto) - Limita tamanho para não estourar
-                        res = model.generate_content(f"{prompt}\nTexto: {texto_extraido[:30000]}").text
-                    else:
-                        res = "Nenhum arquivo enviado."
-                        
-                    st.write(res)
+                    prompt = "Resuma para um agrônomo de campo."
+                    cont = [prompt, Image.open(arq_foto)] if arq_foto else f"{prompt}\nTexto: {txt[:30000]}"
+                    st.write(model.generate_content(cont).text)
                 except Exception as e: st.error(f"Erro: {e}")
 
-# 6. MERCADO
-elif opcao == "📊 Mercado & Notícias":
-    st.title("📊 Mercado")
-    c1, c2 = st.columns(2); c1.metric("Soja", "R$ 128,50", "-1.2"); c2.metric("Milho", "R$ 58,90", "0.5")
-    c3, c4 = st.columns(2); c3.metric("Dólar", "R$ 5,04", "0.02"); c4.metric("Boi", "R$ 235", "-2.0")
-    st.markdown("---")
-    st.subheader("📰 Notícias")
-    noticias = carregar_noticias_agro()
-    if noticias:
-        for n in noticias: st.markdown(f"**[{n['titulo']}]({n['link']})** - {n['data']}")
-
-# 7. OUTRAS FERRAMENTAS
+# 6. ANÁLISE SOLO
 elif opcao == "🧪 Análise de Solo":
-    st.title("🧪 Leitor de Análise")
-    arquivo = st.file_uploader("Foto do Laudo", type=["jpg","png"])
+    st.title("🧪 Leitor de Solo")
+    arquivo = st.camera_input("Foto Laudo") or st.file_uploader("Upload", type=["jpg","png"])
     if arquivo and st.button("Ler"):
-        model = genai.GenerativeModel(descobrir_modelo(api_key))
-        st.write(model.generate_content(["Analise este solo. pH, V%, Adubação.", Image.open(arquivo)]).text)
+        if not api_key: st.error("API?")
+        else:
+            with st.spinner("Lendo..."):
+                try:
+                    model = genai.GenerativeModel(descobrir_modelo(api_key))
+                    st.write(model.generate_content(["Analise solo. pH, V%, Correção.", Image.open(arquivo)]).text)
+                except Exception as e: st.error(f"Erro: {e}")
 
+# 7. FINANÇAS
 elif opcao == "💰 Finanças (Leitor NF)":
     st.title("💰 Leitor de Notas")
-    arquivo = st.file_uploader("Foto da NF", type=["jpg","png"])
+    arquivo = st.camera_input("Foto NF") or st.file_uploader("Upload", type=["jpg","png"])
     if arquivo and st.button("Ler"):
-        model = genai.GenerativeModel(descobrir_modelo(api_key))
-        st.write(model.generate_content(["Extraia dados da NF em tabela.", Image.open(arquivo)]).text)
+        if not api_key: st.error("API?")
+        else:
+            with st.spinner("Lendo..."):
+                try:
+                    model = genai.GenerativeModel(descobrir_modelo(api_key))
+                    st.write(model.generate_content(["Extraia dados da NF em tabela.", Image.open(arquivo)]).text)
+                except Exception as e: st.error(f"Erro: {e}")
 
+# 8. INGLÊS
 elif opcao == "🇺🇸 Inglês Agro":
     st.title("🇺🇸 Tradutor")
     txt = st.text_area("Texto em Inglês")
     if txt and st.button("Traduzir"):
-        model = genai.GenerativeModel(descobrir_modelo(api_key))
-        st.write(model.generate_content(f"Traduza tecnicamente: {txt}").text)
+        if not api_key: st.error("API?")
+        else:
+            try:
+                model = genai.GenerativeModel(descobrir_modelo(api_key))
+                st.success(model.generate_content(f"Traduza tecnicamente: {txt}").text)
+            except Exception as e: st.error(f"Erro: {e}")
 
+# 9. CALCULADORAS
+elif opcao == "🧮 Calculadoras Agro":
+    st.title("🧮 Calculadoras")
+    tipo = st.selectbox("Tipo:", ["Plantabilidade", "Pulverização"])
+    if tipo == "Plantabilidade":
+        pop = st.number_input("População", value=300000)
+        esp = st.number_input("Espaçamento", value=45.0)
+        germ = st.number_input("Germinação", value=90)
+        if st.button("Calcular"): st.metric("Sementes/m", f"{(pop/(10000/(esp/100))/(germ/100)):.1f}")
+    else:
+        tnq = st.number_input("Tanque", value=2000)
+        vaz = st.number_input("Vazão", value=150)
+        dose = st.number_input("Dose", value=0.5)
+        if st.button("Calcular"): st.metric("Prod/Tanque", f"{(tnq/vaz)*dose:.2f} L")
+
+# 10. RÉGUA
 elif opcao == "📏 Régua Fenológica":
     st.title("📏 Fenologia")
     c = st.selectbox("Cultura", list(FENOLOGIA_TEXTOS.keys()))
