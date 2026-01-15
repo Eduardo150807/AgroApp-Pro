@@ -207,7 +207,7 @@ MAPA_IMAGENS = {
 # ==========================================
 # 🔐 LOGIN
 # ==========================================
-USUARIOS = {"admin": "agro123", "teste": "123"}
+USUARIOS = {"admin": "agro123", "teste": "123", "felpz": "f2025"}
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'usuario_atual' not in st.session_state: st.session_state['usuario_atual'] = ""
 
@@ -427,3 +427,4 @@ elif opcao == "📏 Régua Fenológica":
     for n,d in FENOLOGIA_TEXTOS[c].items(): st.markdown(f"<div class='feno-box'><b>{n}</b><br>{d}</div>", unsafe_allow_html=True)
     img = os.path.join("img_fenologia", MAPA_IMAGENS.get(c))
     if os.path.exists(img): st.image(img, use_container_width=True)
+
