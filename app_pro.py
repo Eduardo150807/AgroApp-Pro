@@ -8,7 +8,7 @@ from urllib.request import urlopen
 import PyPDF2
 
 # --- Configuração Visual ---
-st.set_page_config(page_title="AgroReport AI", page_icon="🌾", layout="wide")
+st.set_page_config(page_title="Cuiudo Chat", page_icon="🤠", layout="wide")
 
 # --- CSS PREMIUM (MERCADO TRADING + CHAT LIMPO) ---
 st.markdown("""
@@ -73,6 +73,31 @@ st.markdown("""
 # ==========================================
 # 🧠 CÉREBRO (FUNÇÕES)
 # ==========================================
+
+# --- NOVA FUNÇÃO ANTI-ERRO DE MODELO ---
+def descobrir_modelo_disponivel(key):
+    """Descobre qual modelo está disponível na conta do usuário para não travar"""
+    genai.configure(api_key=key)
+    try:
+        # Lista todos os modelos que a conta tem acesso
+        modelos = list(genai.list_models())
+        
+        # 1. Tenta achar o Flash (mais rápido)
+        for m in modelos:
+            if 'flash' in m.name and 'generateContent' in m.supported_generation_methods:
+                return m.name
+        
+        # 2. Se não tiver Flash, tenta o Pro
+        for m in modelos:
+            if 'pro' in m.name and 'generateContent' in m.supported_generation_methods:
+                return m.name
+                
+        # 3. Se não achar nenhum específico, pega o primeiro da lista que funciona
+        return modelos[0].name
+    except:
+        # Se der erro na listagem, tenta o padrãozão na sorte
+        return "gemini-1.5-flash"
+
 def ler_pdf(arquivo):
     try:
         leitor = PyPDF2.PdfReader(arquivo)
@@ -99,7 +124,7 @@ def carregar_noticias():
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = 0
 
-# Login Simples (Pode remover se quiser deixar aberto)
+# Login Simples
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
 
@@ -110,7 +135,7 @@ def login():
     else: st.error("Erro.")
 
 if not st.session_state['logado']:
-    st.title("🔐 Login")
+    st.title("🔐 Login Cuiudo")
     st.text_input("User", key="w_u"); st.text_input("Senha", type="password", key="w_p")
     st.button("Entrar", on_click=login); st.stop()
 
@@ -131,11 +156,13 @@ with st.sidebar:
 # ==========================================
 # 📱 INTERFACE PRINCIPAL (ABAS)
 # ==========================================
-aba_assistente, aba_mercado = st.tabs(["🤖 Super Assistente (Chat)", "📊 Mercado Agro"])
+st.title("🤠 Cuiudo Chat") # Título Principal
+
+aba_assistente, aba_mercado = st.tabs(["💬 Chat Inteligente", "📊 Mercado Agro"])
 
 # --- ABA 1: SUPER ASSISTENTE UNIFICADO ---
 with aba_assistente:
-    st.markdown("#### 💬 Converse, envie Fotos ou PDFs")
+    st.markdown("#### Converse, envie Fotos ou PDFs")
     
     # Área de Upload (Fica fixo acima do chat)
     arquivo = st.file_uploader("Anexar Imagem (Diagnóstico) ou PDF (Resumo)", 
@@ -158,21 +185,22 @@ with aba_assistente:
         
         # 1. Adiciona pergunta do usuário
         st.session_state["messages"].append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.write(prompt)
-
-        # 2. Define o "MODO" baseado no anexo
+        
+        # --- CORREÇÃO DO PROBLEMA DE MODELO AQUI ---
+        # Em vez de fixar o nome, ele descobre qual usar
+        nome_modelo_correto = descobrir_modelo_disponivel(api_key)
+        
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(nome_modelo_correto)
         resposta = ""
 
-        with st.spinner("Analisando..."):
+        with st.spinner(f"Cuiudo pensando... (Usando {nome_modelo_correto})"):
             try:
                 # --- MODO 1: IDENTIFICADOR (IMAGEM) ---
                 if arquivo and arquivo.type in ["image/jpeg", "image/png"]:
                     img = Image.open(arquivo)
-                    st.image(img, caption="Imagem enviada", width=200)
+                    # Não mostramos a imagem grande de novo pra não poluir, só processamos
                     
-                    # PROMPT CORRIGIDO (PARA PARAR DE ERRAR)
                     prompt_fitopatologista = f"""
                     Atue como um Fitopatologista Sênior e Cético.
                     O usuário perguntou: '{prompt}'
@@ -203,14 +231,15 @@ with aba_assistente:
                 # --- MODO 3: CONVERSA NORMAL (TEXTO) ---
                 else:
                     prompt_agro = f"""
-                    Você é um Assistente Agronômico Sênior. Seja direto, técnico e use emojis.
+                    Você é o 'Cuiudo', um Assistente Agronômico Sênior. 
+                    Seja direto, técnico, rústico mas educado. Use emojis do campo.
                     Responda à pergunta: {prompt}
                     """
                     resposta = model.generate_content(prompt_agro).text
 
-                # 3. Salva e mostra resposta
+                # 3. Salva e recarrega
                 st.session_state["messages"].append({"role": "assistant", "content": resposta})
-                st.rerun() # Recarrega para mostrar bonito no CSS
+                st.rerun()
 
             except Exception as e:
                 st.error(f"Erro na IA: {e}")
@@ -222,8 +251,6 @@ with aba_mercado:
     # Layout de Cards Financeiros
     c1, c2, c3, c4 = st.columns(4)
     
-    # Simulando dados (Numa versão final, conectaria numa API real)
-    # Visual corrigido para parecer "Bloomberg"
     with c1:
         st.markdown("""
         <div class="market-card">
