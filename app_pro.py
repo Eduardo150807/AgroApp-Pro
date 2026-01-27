@@ -7,71 +7,129 @@ import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 import PyPDF2
 
-# --- Configuração Visual ---
-st.set_page_config(page_title="AgroMind", page_icon="🧠", layout="wide")
+# ==========================================
+# ⚙️ CONFIGURAÇÃO INICIAL (FORÇANDO ÍCONE)
+# ==========================================
+st.set_page_config(
+    page_title="AgroMind", 
+    page_icon="🧠", # Esse ícone aparece na aba
+    layout="wide",
+    initial_sidebar_state="collapsed" # Esconde a barra lateral ao abrir
+)
 
-# --- CSS PREMIUM (ZAP STYLE) ---
+# ==========================================
+# 🎨 CSS PREMIUM (MODO APP NATIVO DARK)
+# ==========================================
 st.markdown("""
     <style>
+    /* 1. ESCONDER TUDO QUE É DO STREAMLIT */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header[data-testid="stHeader"] {background-color: transparent;}
+    header {visibility: hidden;} /* Esconde a barra colorida superior */
+    [data-testid="stToolbar"] {visibility: hidden;} /* Esconde opções do canto direito */
+    [data-testid="stSidebarNav"] {display: none;} /* Esconde navegação padrão */
     
-    /* Campos de texto escuros */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] { 
-        background-color: #1E1E1E !important; 
-        color: white !important; 
-        border-radius: 10px; 
+    /* 2. FORÇAR FUNDO ESCURO (DARK MODE ABSOLUTO) */
+    .stApp {
+        background-color: #0E1117;
     }
     
-    /* ABAS MINIMALISTAS */
+    /* 3. CAMPOS DE TEXTO E BOTÕES ESTILO 'ZAP' */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] { 
+        background-color: #1F2937 !important; 
+        color: #F3F4F6 !important; 
+        border-radius: 12px; 
+        border: 1px solid #374151;
+    }
+    
+    /* 4. ABAS (TABS) MODERNAS E DISCRETAS */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
+        gap: 8px;
         background-color: transparent;
+        padding: 10px 0;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 40px;
+        height: 45px;
         white-space: pre-wrap;
-        background-color: #121212;
-        border-radius: 20px;
-        color: #888;
-        padding: 0 20px;
-        border: 1px solid #333;
+        background-color: #111827;
+        border-radius: 12px;
+        color: #9CA3AF;
+        padding: 0 16px;
+        border: 1px solid #374151;
+        font-weight: 500;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #2E7D32;
+        background-color: #059669; /* Verde Agro */
         color: white;
         border: none;
     }
 
-    /* MERCADO CARD */
-    .market-card { background-color: #121212; border: 1px solid #333; border-radius: 12px; padding: 15px; text-align: center; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .market-card:hover { border-color: #4CAF50; transform: translateY(-2px); }
-    .market-symbol { color: #888; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
-    .market-price { color: #fff; font-size: 1.8em; font-weight: 700; margin: 5px 0; }
-    .market-change-up { color: #00E676; font-weight: bold; font-size: 0.9em; }
-    .market-change-down { color: #FF5252; font-weight: bold; font-size: 0.9em; }
+    /* 5. CARDS DE MERCADO (ESTILO BLOOMBERG DARK) */
+    .market-card { 
+        background-color: #111827; 
+        border: 1px solid #374151; 
+        border-radius: 12px; 
+        padding: 15px; 
+        text-align: center; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); 
+    }
+    .market-symbol { color: #9CA3AF; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;}
+    .market-price { color: #F9FAFB; font-size: 1.5em; font-weight: 700; }
+    .market-change-up { color: #34D399; font-weight: bold; font-size: 0.85em; }
+    .market-change-down { color: #F87171; font-weight: bold; font-size: 0.85em; }
 
-    /* CHAT BUBBLES */
-    .chat-user { text-align: right; background-color: #005c4b; color: white; padding: 10px 15px; border-radius: 10px 0 10px 10px; display: inline-block; margin: 5px 0 5px auto; max-width: 85%; }
-    .chat-ai { text-align: left; background-color: #202c33; color: #ECEFF1; padding: 10px 15px; border-radius: 0 10px 10px 10px; display: inline-block; margin: 5px auto 5px 0; max-width: 85%; border: 1px solid #37474F; }
-    .chat-container { display: flex; flex-direction: column; margin-bottom: 20px;}
+    /* 6. BALÕES DE CHAT (WHATSAPP DARK) */
+    .chat-user { 
+        text-align: right; 
+        background-color: #005c4b; 
+        color: #E9EDEF; 
+        padding: 10px 15px; 
+        border-radius: 12px 0 12px 12px; 
+        display: inline-block; 
+        margin: 5px 0 5px auto; 
+        max-width: 85%; 
+        font-size: 15px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .chat-ai { 
+        text-align: left; 
+        background-color: #202c33; 
+        color: #E9EDEF; 
+        padding: 10px 15px; 
+        border-radius: 0 12px 12px 12px; 
+        display: inline-block; 
+        margin: 5px auto 5px 0; 
+        max-width: 85%; 
+        border: 1px solid #37474F; 
+        font-size: 15px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .chat-container { display: flex; flex-direction: column; margin-bottom: 60px;} /* Espaço extra pro input */
     
-    /* ESCONDER O LABEL DO UPLOAD PARA FICAR LIMPO */
+    /* 7. LIMPEZA DE INTERFACE EXTRA */
     [data-testid="stFileUploader"] label {display: none;}
     [data-testid="stCameraInput"] label {display: none;}
+    [data-testid="stHeader"] {display: none;} /* Tchau header do Streamlit */
     
+    /* Botão de Clips (Popover) */
+    [data-testid="stPopover"] button {
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        background-color: #202c33;
+        border: none;
+        color: #8696a0;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 🧠 FUNÇÕES
+# 🧠 FUNÇÕES DE BACKEND
 # ==========================================
 def descobrir_modelo_disponivel(key):
     genai.configure(api_key=key)
     try:
         modelos = list(genai.list_models())
-        # Prioriza modelos que aceitam multimidia
         for m in modelos:
             if 'flash' in m.name: return m.name
         return modelos[0].name
@@ -92,203 +150,175 @@ def carregar_noticias():
             tree = ET.parse(response)
             root = tree.getroot()
             noticias = []
-            for item in root.findall('./channel/item')[:6]:
+            for item in root.findall('./channel/item')[:5]:
                 noticias.append({'titulo': item.find('title').text, 'link': item.find('link').text, 'data': item.find('pubDate').text})
             return noticias
     except: return []
 
 # ==========================================
-# 🔄 LOGIN & SETUP
+# 🔐 LOGIN & SETUP
 # ==========================================
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = 0
 
 if 'logado' not in st.session_state: st.session_state['logado'] = False
-CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
+CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"} # Mantenha suas senhas aqui
 
 def login():
     u = st.session_state.get('w_u', '')
     s = st.session_state.get('w_p', '')
     if u in CREDENCIAIS and CREDENCIAIS[u] == s: st.session_state['logado'] = True
-    else: st.error("Erro.")
+    else: st.error("Acesso Negado.")
 
 if not st.session_state['logado']:
-    st.title("🔐 Login AgroMind")
-    st.text_input("User", key="w_u"); st.text_input("Senha", type="password", key="w_p")
-    st.button("Entrar", on_click=login); st.stop()
+    st.markdown("<h1 style='text-align: center;'>🔐 AgroMind</h1>", unsafe_allow_html=True)
+    c_log1, c_log2, c_log3 = st.columns([1,2,1])
+    with c_log2:
+        st.text_input("Usuário", key="w_u")
+        st.text_input("Senha", type="password", key="w_p")
+        st.button("Entrar no Sistema", on_click=login, use_container_width=True)
+    st.stop()
 
-# --- SIDEBAR LIMPA ---
+# --- SIDEBAR OCULTA (SÓ ABRE SE CLICAR) ---
 with st.sidebar:
     st.title("🧠 Config")
-    if st.button("🗑️ Nova Conversa"):
+    if st.button("🗑️ Nova Conversa", use_container_width=True):
         st.session_state["messages"] = []
         st.session_state["uploader_key"] += 1 
         st.rerun()
-    if st.button("Sair"): st.session_state['logado'] = False; st.rerun()
+    if st.button("Sair", use_container_width=True): st.session_state['logado'] = False; st.rerun()
     st.divider()
     if "GOOGLE_API_KEY" in st.secrets: api_key = st.secrets["GOOGLE_API_KEY"]
     else: api_key = st.text_input("Chave Google API:", type="password")
 
 # ==========================================
-# 📱 APP PRINCIPAL
+# 📱 INTERFACE PRINCIPAL
 # ==========================================
-st.title("🧠 AgroMind") 
-aba_chat, aba_mercado = st.tabs(["💬 AgroMind Chat", "📈 Mercado"])
+# Cabeçalho Minimalista
+c_head1, c_head2 = st.columns([1, 5])
+with c_head1: st.markdown("## 🧠")
+with c_head2: st.markdown("## AgroMind AI")
 
-# --- ABA 1: CHAT WHATSAPP STYLE ---
+aba_chat, aba_mercado = st.tabs(["💬 Chat", "📈 Mercado"])
+
+# --- ABA 1: CHAT PRO ---
 with aba_chat:
     
-    # 1. MOSTRAR MENSAGENS ANTERIORES
+    # Histórico de Mensagens
     st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
     for msg in st.session_state["messages"]:
         role = "chat-user" if msg["role"] == "user" else "chat-ai"
-        icon = "🧑‍🌾" if role == "chat-user" else "🧠"
+        icon = ""
         st.markdown(f"<div class='{role}'>{icon} {msg['content']}</div><div style='clear:both'></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 2. BARRA DE FERRAMENTAS (ACIMA DO CHAT)
-    # Criamos colunas para os botões ficarem alinhados
-    col_tools1, col_tools2, col_spacer = st.columns([1, 4, 15])
+    # BARRA DE FERRAMENTAS
+    col_clip, col_mic, col_space = st.columns([1, 1, 6])
     
     midia_enviada = None
-    tipo_midia = None # 'imagem', 'pdf', 'audio'
+    tipo_midia = None
 
-    with col_tools1:
-        # MENU FLUTUANTE (POPOVER) - O "Clips" do WhatsApp
-        with st.popover("📎", help="Anexar Foto ou Documento"):
-            st.markdown("**Selecione uma opção:**")
-            
-            tab_foto, tab_cam, tab_doc = st.tabs(["🖼️ Galeria", "📸 Câmera", "📄 Documento"])
-            
+    with col_clip:
+        # MENU TIPO ZAP (CLIPS)
+        with st.popover("📎", help="Anexar"):
+            st.caption("Selecione:")
+            tab_foto, tab_cam, tab_doc = st.tabs(["🖼️", "📸", "📄"])
             with tab_foto:
-                upl_img = st.file_uploader("Escolher foto", type=["jpg","png","jpeg"], key=f"img_{st.session_state['uploader_key']}")
-                if upl_img: 
-                    midia_enviada = upl_img
-                    tipo_midia = 'imagem'
-            
+                upl_img = st.file_uploader("Galeria", type=["jpg","png"], key=f"img_{st.session_state['uploader_key']}")
+                if upl_img: midia_enviada = upl_img; tipo_midia = 'imagem'
             with tab_cam:
-                cam_img = st.camera_input("Tirar foto")
-                if cam_img: 
-                    midia_enviada = cam_img
-                    tipo_midia = 'imagem'
-
+                cam_img = st.camera_input("Câmera")
+                if cam_img: midia_enviada = cam_img; tipo_midia = 'imagem'
             with tab_doc:
-                upl_doc = st.file_uploader("PDF/Word", type=["pdf", "docx", "txt"], key=f"doc_{st.session_state['uploader_key']}")
-                if upl_doc:
-                    midia_enviada = upl_doc
-                    tipo_midia = 'pdf'
+                upl_doc = st.file_uploader("PDF", type=["pdf"], key=f"doc_{st.session_state['uploader_key']}")
+                if upl_doc: midia_enviada = upl_doc; tipo_midia = 'pdf'
 
-    with col_tools2:
-        # GRAVADOR DE ÁUDIO
+    with col_mic:
         audio_rec = st.audio_input("🎙️")
-        if audio_rec:
-            midia_enviada = audio_rec
-            tipo_midia = 'audio'
+        if audio_rec: midia_enviada = audio_rec; tipo_midia = 'audio'
 
-    # Aviso visual se algo estiver anexado
     if midia_enviada:
-        st.info(f"📎 {tipo_midia.upper()} anexado! Digite sua mensagem abaixo para enviar tudo.")
+        st.toast(f"📎 {tipo_midia.upper()} Pronto! Digite e envie.", icon="✅")
 
-    # 3. CAMPO DE DIGITAÇÃO (FIXO EMBAIXO)
-    prompt = st.chat_input("Digite sua mensagem...")
+    # INPUT TEXTO
+    prompt = st.chat_input("Mensagem...")
 
     # LÓGICA DE ENVIO
     if prompt or (midia_enviada and tipo_midia == 'audio'):
         if not api_key: st.error("Falta API Key"); st.stop()
         
-        # Se for áudio, o prompt pode ser "Analise este áudio" se o usuário não digitou nada
-        texto_usuario = prompt if prompt else "Analise este arquivo/áudio."
-        
-        # Mostra na tela
+        texto_usuario = prompt if prompt else "Analise este áudio/arquivo."
         st.session_state["messages"].append({"role": "user", "content": texto_usuario})
         
-        # Configura IA
         nome_modelo = descobrir_modelo_disponivel(api_key)
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(nome_modelo)
         resposta = ""
 
-        with st.spinner("AgroMind analisando..."):
+        with st.spinner("AgroMind pensando..."):
             try:
-                # --- PROCESSAMENTO POR TIPO ---
-                
-                # 1. IMAGEM (Fitopatologista)
+                # 1. IMAGEM
                 if tipo_midia == 'imagem':
                     img = Image.open(midia_enviada)
-                    prompt_final = f"Atue como Fitopatologista. Usuário: '{texto_usuario}'. Identifique e recomende."
+                    prompt_final = f"Atue como Agrônomo Sênior. Usuário: '{texto_usuario}'. Identifique o problema na imagem e dê a solução técnica."
                     resposta = model.generate_content([prompt_final, img]).text
                 
-                # 2. PDF/DOC (Resumo)
+                # 2. PDF
                 elif tipo_midia == 'pdf':
-                    if midia_enviada.type == "application/pdf":
-                        texto_extraido = ler_pdf(midia_enviada)
-                        prompt_final = f"Resuma/Analise este documento. Contexto: '{texto_usuario}'. Texto: {texto_extraido[:30000]}"
-                        resposta = model.generate_content(prompt_final).text
-                    else:
-                        resposta = "Ainda não leio DOCX, apenas PDF por enquanto."
+                    texto_extraido = ler_pdf(midia_enviada)
+                    prompt_final = f"Resuma e analise. Contexto: '{texto_usuario}'. Texto: {texto_extraido[:30000]}"
+                    resposta = model.generate_content(prompt_final).text
 
-                # 3. ÁUDIO (Transcrever e Responder)
+                # 3. ÁUDIO
                 elif tipo_midia == 'audio':
-                    # O Gemini processa áudio direto
-                    prompt_final = "Ouça o áudio do produtor rural e responda/aja conforme solicitado."
-                    # Upload temporário para API
-                    resposta = model.generate_content([prompt_final,  {
-                        "mime_type": "audio/mp3",
-                        "data": midia_enviada.read()
-                    }]).text
+                    prompt_final = "Ouça o produtor e responda como Agrônomo Especialista."
+                    resposta = model.generate_content([prompt_final, {"mime_type": "audio/mp3", "data": midia_enviada.read()}]).text
 
-                # 4. SÓ TEXTO (Camaleão com Memória)
+                # 4. TEXTO PURO (LÓGICA CAMALEÃO)
                 else:
                     historico = ""
                     for m in st.session_state["messages"]:
-                        h_role = "User" if m["role"] == "user" else "AI"
+                        h_role = "Produtor" if m["role"] == "user" else "AgroMind"
                         historico += f"{h_role}: {m['content']}\n"
 
                     prompt_sistema = f"""
-                    Você é o AgroMind.
-                    DIRETRIZ:
-                    1. Pergunta curta/técnica -> Resposta seca e direta.
-                    2. Conversa/Dúvida -> Resposta consultiva, didática e parceira.
+                    Você é o AgroMind, Inteligência Agronômica.
                     
-                    Histórico:
+                    REGRA DE PERSONALIDADE:
+                    1. Pergunta técnica curta (ex: "fórmula calagem") -> Resposta DIRETA e MATEMÁTICA.
+                    2. Conversa ou dúvida complexa -> Resposta CONSULTIVA, PARCEIRA e DIDÁTICA.
+                    
+                    HISTÓRICO:
                     {historico}
                     
-                    Atual: {texto_usuario}
+                    PERGUNTA ATUAL: {texto_usuario}
                     """
                     resposta = model.generate_content(prompt_sistema).text
 
                 st.session_state["messages"].append({"role": "assistant", "content": resposta})
-                
-                # Limpa o anexo forçando rerun (incrementa chave)
-                if midia_enviada:
-                    st.session_state["uploader_key"] += 1
-                
+                if midia_enviada: st.session_state["uploader_key"] += 1
                 st.rerun()
 
             except Exception as e:
                 st.error(f"Erro: {e}")
 
-
-# --- ABA 2: MERCADO MINIMALISTA ---
+# --- ABA 2: MERCADO ---
 with aba_mercado:
-    st.markdown("#### 💹 Painel de Cotações")
+    st.caption("Cotações Atualizadas")
+    col1, col2 = st.columns(2)
+    col3, col4 = st.columns(2)
     
-    # Cards menores e mais limpos
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.markdown("""<div class="market-card"><div class="market-symbol">SOJA</div><div class="market-price">R$ 128,50</div><div class="market-change-down">▼ -1.2%</div></div>""", unsafe_allow_html=True)
-    with c2: st.markdown("""<div class="market-card"><div class="market-symbol">MILHO</div><div class="market-price">R$ 58,90</div><div class="market-change-up">▲ +0.5%</div></div>""", unsafe_allow_html=True)
-    with c3: st.markdown("""<div class="market-card"><div class="market-symbol">BOI</div><div class="market-price">R$ 235,00</div><div class="market-change-down">▼ -0.8%</div></div>""", unsafe_allow_html=True)
-    with c4: st.markdown("""<div class="market-card"><div class="market-symbol">DÓLAR</div><div class="market-price">R$ 5,04</div><div class="market-change-up">▲ +0.1%</div></div>""", unsafe_allow_html=True)
+    with col1: st.markdown("""<div class="market-card"><div class="market-symbol">SOJA (SC)</div><div class="market-price">R$ 128,50</div><div class="market-change-down">▼ -1.2%</div></div>""", unsafe_allow_html=True)
+    with col2: st.markdown("""<div class="market-card"><div class="market-symbol">MILHO (SC)</div><div class="market-price">R$ 58,90</div><div class="market-change-up">▲ +0.5%</div></div>""", unsafe_allow_html=True)
+    with col3: st.markdown("""<div class="market-card"><div class="market-symbol">BOI (@)</div><div class="market-price">R$ 235,00</div><div class="market-change-down">▼ -0.8%</div></div>""", unsafe_allow_html=True)
+    with col4: st.markdown("""<div class="market-card"><div class="market-symbol">DÓLAR</div><div class="market-price">R$ 5,04</div><div class="market-change-up">▲ +0.1%</div></div>""", unsafe_allow_html=True)
 
-    st.markdown("---")
-    col_btn, col_title = st.columns([1, 5])
-    with col_btn: 
-        if st.button("🔄"): st.rerun()
-    with col_title:
-        st.caption("Últimas Notícias")
-
+    st.divider()
+    if st.button("🔄 Atualizar Feed", use_container_width=True): st.rerun()
+    
     noticias = carregar_noticias()
     if noticias:
         for n in noticias:
-            st.markdown(f"**[{n['titulo']}]({n['link']})** \n<span style='color:#666; font-size:0.8em'>{n['data']}</span>", unsafe_allow_html=True)
-            st.divider()
+            st.markdown(f"**[{n['titulo']}]({n['link']})**")
+            st.caption(f"📅 {n['data']}")
+            st.markdown("---")
