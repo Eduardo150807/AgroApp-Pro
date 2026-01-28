@@ -208,4 +208,40 @@ with aba2:
         <div class="market-card">
             <div class="market-symbol">🌽 MILHO</div>
             <div class="market-price">R$ 58,90</div>
-            <div
+            <div class="market-up">▲ +0.5%</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with c3: 
+        st.markdown("""
+        <div class="market-card">
+            <div class="market-symbol">🐂 BOI GORDO</div>
+            <div class="market-price">R$ 235,00</div>
+            <div class="market-down">▼ -0.8%</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with c4: 
+        st.markdown("""
+        <div class="market-card">
+            <div class="market-symbol">💵 DÓLAR</div>
+            <div class="market-price">R$ 5,04</div>
+            <div class="market-up">▲ +0.1%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### 📰 Últimas Notícias")
+    
+    noticias = carregar_noticias()
+    if noticias:
+        for n in noticias:
+            # Renderiza cada notícia num card bonito
+            st.markdown(f"""
+            <div class="news-card">
+                <a href="{n['link']}" target="_blank" class="news-title">{n['titulo']}</a>
+                <div class="news-date">📅 {n['data']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Carregando feed de notícias...")
