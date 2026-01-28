@@ -8,7 +8,7 @@ from urllib.request import urlopen
 # --- CONFIGURAÇÃO AGROMIND ---
 st.set_page_config(page_title="AgroMind", page_icon="🧠", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS AGRESSIVO (ESCONDE STREAMLIT E FORÇA DARK) ---
+# --- CSS VISUAL (DARK & LIMPO) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -17,23 +17,21 @@ st.markdown("""
     [data-testid="stToolbar"] {visibility: hidden;}
     .stApp { background-color: #0E1117; }
 
-    /* Estilo de Chat Minimalista */
+    /* Estilo de Chat */
     .chat-user { background-color: #005c4b; color: white; padding: 10px; border-radius: 10px; margin: 5px 0 5px auto; max-width: 80%; text-align: right; }
     .chat-ai { background-color: #202c33; color: white; padding: 10px; border-radius: 10px; margin: 5px auto 5px 0; max-width: 80%; border: 1px solid #333; }
     
-    /* Botões flutuantes de ferramentas */
+    /* Botões Ferramentas */
     .stPopover button { border-radius: 50% !important; width: 50px !important; height: 50px !important; background-color: #262730 !important; border: none !important; }
 
-    /* MERCADO */
+    /* Mercado */
     .market-card { background-color: #121212; border: 1px solid #333; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 10px; }
     .market-symbol { color: #888; font-size: 0.8em; text-transform: uppercase; }
     .market-price { color: #fff; font-size: 1.5em; font-weight: 700; }
-    .market-change-up { color: #00E676; font-size: 0.9em; }
-    .market-change-down { color: #FF5252; font-size: 0.9em; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- FUNÇÕES EXTRAS (Mercado e PDF) ---
+# --- FUNÇÕES ---
 def ler_pdf(arquivo):
     try:
         leitor = PyPDF2.PdfReader(arquivo)
@@ -54,50 +52,61 @@ def carregar_noticias():
             return noticias
     except: return []
 
-# --- LÓGICA DE PERSONALIDADE (CAMALEÃO COM CORREÇÃO DE ERRO) ---
-def gerar_resposta_inteligente(prompt, historico, midia=None):
-    # Verifica API Key
-    if "GOOGLE_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    else:
-        return "Erro Fatal: Falta configurar a GOOGLE_API_KEY no Secrets."
+# --- AQUI ESTÁ A CORREÇÃO: DESCOBRIR O MODELO AUTOMATICAMENTE ---
+def conectar_ia_segura():
+    if "GOOGLE_API_KEY" not in st.secrets:
+        return None, "Erro: Falta GOOGLE_API_KEY no Secrets."
     
-    # Prompt do Sistema
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    
+    # Tenta listar os modelos que o servidor conhece
+    try:
+        lista_modelos = genai.list_models()
+        modelo_escolhido = None
+        
+        # 1. Tenta achar o Flash (Prioridade)
+        for m in lista_modelos:
+            if 'generateContent' in m.supported_generation_methods:
+                if 'flash' in m.name:
+                    return genai.GenerativeModel(m.name), None
+        
+        # 2. Se não achar, pega o Pro
+        for m in genai.list_models():
+             if 'generateContent' in m.supported_generation_methods:
+                if 'pro' in m.name:
+                    return genai.GenerativeModel(m.name), None
+
+        # 3. Se não achar nada específico, pega o 'gemini-pro' padrão
+        return genai.GenerativeModel('gemini-pro'), None
+        
+    except Exception as e:
+        # Se listar falhar, tenta forçar o gemini-pro na marra
+        try:
+            return genai.GenerativeModel('gemini-pro'), None
+        except:
+            return None, f"Erro crítico na IA: {e}"
+
+def gerar_resposta_inteligente(prompt, historico, midia=None):
+    # Conecta usando a função segura acima
+    model, erro = conectar_ia_segura()
+    if erro: return erro
+    
     prompt_sistema = f"""
     Você é o AgroMind. 
-    REGRA DE OURO: 
-    1. Se o usuário mandar uma mensagem curta/seca (ex: "Fórmula calagem"), responda APENAS o dado técnico.
-    2. Se o usuário conversar, seja amigável e use um tom de consultor do campo.
-    
+    REGRA: Responda tecnicamente se for pergunta curta. Seja amigável se for conversa.
     Histórico: {historico}
     Pergunta: {prompt}
     """
-
-    # --- AQUI ESTÁ A MÁGICA QUE CONSERTA O ERRO 404 ---
     try:
-        # Tenta usar o modelo FLASH (Mais rápido)
-        model = genai.GenerativeModel('gemini-1.5-flash')
         if midia:
             return model.generate_content([prompt_sistema, midia]).text
         return model.generate_content(prompt_sistema).text
-        
     except Exception as e:
-        # Se der erro (404 ou outro), ele cai aqui e usa o PRO (Clássico)
-        try:
-            model_backup = genai.GenerativeModel('gemini-pro')
-            # O gemini-pro antigo as vezes não aceita imagem direta na mesma chamada,
-            # então se tiver imagem e der erro no flash, avisamos.
-            if midia:
-                 return "⚠️ O servidor está desatualizado e não suporta imagens no momento. Tente apenas texto ou reinicie o app no Streamlit Cloud (Reboot)."
-            return model_backup.generate_content(prompt_sistema).text
-        except Exception as e2:
-            return f"Erro total de conexão: {str(e)}"
+        return f"⚠️ O servidor não conseguiu processar. Tente atualizar a página. (Erro: {e})"
 
-# --- LOGIN (RESTAURADO COM USUÁRIO) ---
+# --- LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if 'logado' not in st.session_state: st.session_state['logado'] = False
-
-# Credenciais
 CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
 
 if not st.session_state['logado']:
@@ -111,30 +120,28 @@ if not st.session_state['logado']:
                 st.session_state['logado'] = True
                 st.rerun()
             else:
-                st.error("Usuário ou Senha incorretos")
+                st.error("Dados incorretos")
     st.stop()
 
-# --- INTERFACE PRINCIPAL ---
+# --- APP PRINCIPAL ---
 st.title("🧠 AgroMind Chat")
 
 aba1, aba2 = st.tabs(["💬 Conversa", "📊 Mercado"])
 
 with aba1:
-    # Exibir chat
     for m in st.session_state["messages"]:
         classe = "chat-user" if m["role"] == "user" else "chat-ai"
         st.markdown(f"<div class='{classe}'>{m['content']}</div>", unsafe_allow_html=True)
 
-    # BARRA DE FERRAMENTAS
     col1, col2, col3 = st.columns([1, 1, 6])
     arquivo = None
     
     with col1:
         with st.popover("📎"):
-            tipo = st.radio("O que enviar?", ["Foto", "Câmera", "Documento"])
-            if tipo == "Foto": arquivo = st.file_uploader("Imagem", type=["jpg", "png"])
-            elif tipo == "Câmera": arquivo = st.camera_input("Tirar Foto")
-            else: arquivo = st.file_uploader("Anexo", type=["pdf"])
+            tipo = st.radio("Tipo:", ["Foto", "Câmera", "Documento"])
+            if tipo == "Foto": arquivo = st.file_uploader("Galeria", type=["jpg", "png"])
+            elif tipo == "Câmera": arquivo = st.camera_input("Foto")
+            else: arquivo = st.file_uploader("PDF", type=["pdf"])
 
     with col2:
         audio = st.audio_input("🎙️")
@@ -146,35 +153,28 @@ with aba1:
         texto = prompt_usuario if prompt_usuario else "Analise este anexo."
         st.session_state["messages"].append({"role": "user", "content": texto})
         
-        # Converte histórico para string simples
-        hist_str = str(st.session_state["messages"][-5:])
-        
-        # Processamento de Mídia
+        # Prepara a Mídia
         midia_processada = arquivo
         if arquivo and hasattr(arquivo, 'type'):
             if arquivo.type == "application/pdf":
-                texto += f"\n\nCONTEÚDO DO PDF:\n{ler_pdf(arquivo)}"
-                midia_processada = None 
+                texto += f"\nPDF: {ler_pdf(arquivo)}"
+                midia_processada = None
             elif "image" in arquivo.type:
                 midia_processada = Image.open(arquivo)
 
-        res = gerar_resposta_inteligente(texto, hist_str, midia_processada)
+        # Chama a IA
+        res = gerar_resposta_inteligente(texto, str(st.session_state["messages"][-5:]), midia_processada)
         
         st.session_state["messages"].append({"role": "assistant", "content": res})
         st.rerun()
 
 with aba2:
-    st.markdown("### 💹 Cotações do Dia")
+    st.markdown("### 💹 Cotações")
     c1, c2 = st.columns(2)
-    with c1: st.markdown("""<div class="market-card"><div class="market-symbol">SOJA</div><div class="market-price">R$ 128,50</div><div class="market-change-down">▼ -1.2%</div></div>""", unsafe_allow_html=True)
-    with c2: st.markdown("""<div class="market-card"><div class="market-symbol">MILHO</div><div class="market-price">R$ 58,90</div><div class="market-change-up">▲ +0.5%</div></div>""", unsafe_allow_html=True)
-    
-    c3, c4 = st.columns(2)
-    with c3: st.markdown("""<div class="market-card"><div class="market-symbol">BOI</div><div class="market-price">R$ 235,00</div><div class="market-change-down">▼ -0.8%</div></div>""", unsafe_allow_html=True)
-    with c4: st.markdown("""<div class="market-card"><div class="market-symbol">DÓLAR</div><div class="market-price">R$ 5,04</div><div class="market-change-up">▲ +0.1%</div></div>""", unsafe_allow_html=True)
-
+    with c1: st.markdown("""<div class="market-card"><div class="market-symbol">SOJA</div><div class="market-price">R$ 128,50</div></div>""", unsafe_allow_html=True)
+    with c2: st.markdown("""<div class="market-card"><div class="market-symbol">MILHO</div><div class="market-price">R$ 58,90</div></div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.caption("Últimas Notícias (Google News)")
+    st.caption("Notícias")
     noticias = carregar_noticias()
     if noticias:
         for n in noticias:
