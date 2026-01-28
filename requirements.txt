@@ -1,4 +1,4 @@
-Streamlit
-Google-generativeAI
-fpdf
-Travesseiro
+streamlit
+google-generativeai>=0.7.0
+Pillow
+pypdf2
