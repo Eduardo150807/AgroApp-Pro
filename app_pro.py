@@ -38,16 +38,37 @@ def ler_pdf(arquivo):
         return texto
     except: return "Erro ao ler PDF."
 
+# --- A MÁGICA DA SELEÇÃO DE MODELO ---
+def obter_modelo_seguro(api_key, tools_config=None):
+    # Tenta configurar o modelo mais novo
+    try:
+        # Tenta o Flash 1.5 (Mais rápido)
+        model = genai.GenerativeModel('gemini-1.5-flash', tools=tools_config)
+        return model
+    except:
+        pass
+    
+    try:
+        # Se falhar, tenta o Pro 1.5
+        model = genai.GenerativeModel('gemini-1.5-pro', tools=tools_config)
+        return model
+    except:
+        pass
+
+    # Se tudo der errado, usa o clássico (Plano Z)
+    # O clássico geralmente não aceita tools de busca avançada, então tiramos o tools se cair aqui
+    return genai.GenerativeModel('gemini-pro')
+
 def gerar_resposta_inteligente(prompt, historico, midia=None):
     # Configura API
     if "GOOGLE_API_KEY" in st.secrets:
         chave = st.secrets["GOOGLE_API_KEY"]
     else:
-        return "⚠️ Erro: Chave de API não configurada no Secrets."
+        return "⚠️ Erro: Chave de API não configurada."
 
     genai.configure(api_key=chave)
     
-    # 🌍 CONFIGURAÇÃO DE FERRAMENTAS (BUSCA GOOGLE)
+    # Ferramenta de Busca (Google Search)
     tools = [
         {"google_search_retrieval": {
             "dynamic_retrieval_config": {
@@ -57,26 +78,19 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         }}
     ]
     
-    # --- MUDANÇA: FORÇANDO O MODELO FLASH DIRETO ---
-    # Não tentamos mais listar modelos. Vamos direto no certo.
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash', tools=tools)
-    except:
-        # Fallback de segurança se o flash falhar
-        model = genai.GenerativeModel('gemini-1.5-pro', tools=tools)
+    # Chama a função que escolhe o modelo que funciona
+    model = obter_modelo_seguro(chave, tools)
     
-    # 🧠 O CÉREBRO
+    # O CÉREBRO
     prompt_sistema = f"""
-    Você é o AgroMind, consultor agronômico sênior.
+    Você é o AgroMind, consultor agronômico.
     
     DIRETRIZES:
-    1. 🌦️ CLIMA: Se perguntarem de clima, peça a cidade. Use o Google Search para ver a previsão. Cite a fonte.
-    2. 🔎 ATUALIDADES: Use o Google Search para notícias, cotações e pessoas (Ex: "Primos Agro").
-    3. 🚜 TÉCNICO: Responda seco e direto para perguntas técnicas curtas.
+    1. CLIMA/ATUALIDADES: Se possível, use o Google Search (se disponível no modelo).
+    2. TÉCNICO: Responda seco e direto para perguntas técnicas.
+    3. CONVERSA: Seja parceiro.
     
-    HISTÓRICO:
-    {historico}
-    
+    HISTÓRICO: {historico}
     PERGUNTA: {prompt}
     """
     
@@ -86,7 +100,8 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         else:
             return model.generate_content(prompt_sistema).text
     except Exception as e:
-        return f"⚠️ Erro de conexão com a IA: {e}. Tente novamente em alguns segundos."
+        # Se der erro de "model not found" mesmo assim, tenta limpar o nome
+        return f"⚠️ O sistema está atualizando. Tente novamente em 1 minuto. Erro técnico: {e}"
 
 # --- TELA DE LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
@@ -128,8 +143,8 @@ if texto or arquivo:
     msg_usuario = texto if texto else "Analise este anexo."
     st.session_state["messages"].append({"role": "user", "content": msg_usuario})
     
-    with st.spinner("AgroMind consultando..."):
-        # Prepara histórico curto (últimas 4 mensagens para economizar tokens e evitar erro)
+    with st.spinner("AgroMind processando..."):
+        # Histórico curto
         historico_txt = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state["messages"][-4:]])
         
         # Chama a inteligência
