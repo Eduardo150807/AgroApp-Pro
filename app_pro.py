@@ -40,9 +40,14 @@ def ler_pdf(arquivo):
 
 def gerar_resposta_inteligente(prompt, historico, midia=None):
     # Configura API
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    if "GOOGLE_API_KEY" in st.secrets:
+        chave = st.secrets["GOOGLE_API_KEY"]
+    else:
+        return "⚠️ Erro: Chave de API não configurada no Secrets."
+
+    genai.configure(api_key=chave)
     
-    # 🌍 ATIVA O GOOGLE SEARCH (Para Clima e Notícias)
+    # 🌍 CONFIGURAÇÃO DE FERRAMENTAS (BUSCA GOOGLE)
     tools = [
         {"google_search_retrieval": {
             "dynamic_retrieval_config": {
@@ -52,33 +57,27 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         }}
     ]
     
-    model = genai.GenerativeModel('gemini-1.5-flash', tools=tools)
+    # --- MUDANÇA: FORÇANDO O MODELO FLASH DIRETO ---
+    # Não tentamos mais listar modelos. Vamos direto no certo.
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash', tools=tools)
+    except:
+        # Fallback de segurança se o flash falhar
+        model = genai.GenerativeModel('gemini-1.5-pro', tools=tools)
     
-    # 🧠 O CÉREBRO COM REGRAS DE CLIMA
+    # 🧠 O CÉREBRO
     prompt_sistema = f"""
     Você é o AgroMind, consultor agronômico sênior.
     
-    DIRETRIZES DE COMPORTAMENTO:
+    DIRETRIZES:
+    1. 🌦️ CLIMA: Se perguntarem de clima, peça a cidade. Use o Google Search para ver a previsão. Cite a fonte.
+    2. 🔎 ATUALIDADES: Use o Google Search para notícias, cotações e pessoas (Ex: "Primos Agro").
+    3. 🚜 TÉCNICO: Responda seco e direto para perguntas técnicas curtas.
     
-    1. 🌦️ SOBRE CLIMA E TEMPO (REGRA DE OURO):
-       - Se o usuário perguntar do tempo mas NÃO disser a cidade/localização:
-         NÃO TENTE ADIVINHAR. Responda: "Opa, companheiro! Pra eu consultar a previsão exata, preciso que você me diga o nome da sua cidade e estado (ou mande a localização)."
-       - Se ele disser a cidade:
-         USE A BUSCA DO GOOGLE para encontrar a previsão em fontes confiáveis (INMET, Climatempo, NOAA).
-         Responda com os dados (chuva, temperatura, vento).
-         NO FINAL, CITE A FONTE. Ex: "(Dados obtidos via Google/Climatempo)".
-         Dê a dica: "Sempre que puder, mande a localização exata para acertarmos na mosca."
-    
-    2. 🔎 SOBRE ATUALIDADES (PESSOAS, NOTÍCIAS, PREÇOS):
-       - Use a Busca do Google para responder coisas recentes (ex: "Quem são os Primos Agro?", "Preço do Boi hoje").
-    
-    3. 🚜 PERGUNTAS TÉCNICAS (AGRONOMIA PURA):
-       - Responda de forma direta e técnica (ex: cálculos, doenças, manejo).
-    
-    HISTÓRICO DA CONVERSA:
+    HISTÓRICO:
     {historico}
     
-    PERGUNTA ATUAL: {prompt}
+    PERGUNTA: {prompt}
     """
     
     try:
@@ -87,7 +86,7 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         else:
             return model.generate_content(prompt_sistema).text
     except Exception as e:
-        return f"Erro de conexão: {e}"
+        return f"⚠️ Erro de conexão com a IA: {e}. Tente novamente em alguns segundos."
 
 # --- TELA DE LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
@@ -130,8 +129,8 @@ if texto or arquivo:
     st.session_state["messages"].append({"role": "user", "content": msg_usuario})
     
     with st.spinner("AgroMind consultando..."):
-        # Prepara histórico para a IA ler
-        historico_txt = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state["messages"][-6:]])
+        # Prepara histórico curto (últimas 4 mensagens para economizar tokens e evitar erro)
+        historico_txt = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state["messages"][-4:]])
         
         # Chama a inteligência
         resp = gerar_resposta_inteligente(msg_usuario, historico_txt, arquivo)
