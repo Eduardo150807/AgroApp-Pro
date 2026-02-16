@@ -193,10 +193,9 @@ with aba2:
 with aba3:
     st.markdown("### 🚜 Ferramentas Técnicas")
     
-    # 1. PLANTIO (FLEXÍVEL E INTELIGENTE)
+    # 1. PLANTIO (ATUALIZADO COM CÁLCULO DE METROS)
     with st.expander("🌱 Plantio (Cálculo Flexível)", expanded=True):
         
-        # Modo Simples ou Avançado
         modo_avancado = st.checkbox("🛠️ Modo Avançado (Qualidade de Semente e Perdas)")
         
         c_pop, c_esp = st.columns(2)
@@ -205,17 +204,15 @@ with aba3:
         with c_esp: 
             espacamento = st.number_input("Espaçamento (cm) [Opcional]:", value=0.0)
 
-        # Valores padrão (Modo Simples)
+        # Defaults
         germ = 100.0
         pureza = 100.0
         pms = 0.0
         perda = 0.0
 
-        # Se Modo Avançado estiver ativado, mostra os campos
         if modo_avancado:
             st.markdown("---")
             st.caption("📋 Detalhes da Semente e Perda")
-            
             c1, c2, c3, c4 = st.columns(4)
             with c1: germ = st.number_input("Germinação (%):", value=100.0, max_value=100.0)
             with c2: pureza = st.number_input("Pureza (%):", value=100.0, max_value=100.0)
@@ -223,42 +220,46 @@ with aba3:
             with c4: pms = st.number_input("PMS (g):", value=0.0)
 
         if st.button("Calcular Plantio"):
-            # 1. Valor Cultural (VC)
-            # Se usuário não preencheu (Modo Simples), usa 100%
+            # 1. VC
             vc = (germ * pureza) / 100
             
-            # 2. Fator de Perda
-            # Se usuário não preencheu, perda é 0, fator é 1 (sem perda)
+            # 2. Perda
             fator_perda = 1 - (perda / 100)
             
             if fator_perda <= 0:
-                st.error("A perda não pode ser 100%.")
+                st.error("Erro: Perda excessiva.")
             else:
-                # 3. População Real Necessária
-                # Fórmula: Pop / (VC * FatorPerda)
+                # 3. População Necessária
                 pop_necessaria = (pop * 1000) / ((vc / 100) * fator_perda)
                 
-                # HTML do Resultado
+                # HTML Base
                 html_res = f"""
                 <div class="result-box">
                 🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>
                 🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>
                 """
                 
-                # Detalhes técnicos se tiver perda ou qualidade baixa
-                if vc < 100 or perda > 0:
-                     html_res += f"<br><span style='font-size:0.8em; color:#bbb'>(Considerando VC: {vc:.1f}% e Perda: {perda}%)</span>"
-
-                # Regulagem
+                # 4. CÁLCULO DE METROS LINEARES E SEMENTES/METRO
+                # Só calcula se o usuário preencheu o espaçamento (> 0)
                 if espacamento > 0:
+                    # Metros lineares em 1 ha = 10.000 m2 / espaçamento em metros
                     metros_lineares = 10000 / (espacamento / 100)
+                    
+                    # Sementes por metro = Total Sementes / Metros Lineares
                     sem_metro = pop_necessaria / metros_lineares
-                    html_res += f"<br><br>📏 <b>Regular Máquina: {sem_metro:.1f} sementes/metro</b>"
+                    
+                    # Adiciona ao resultado visual
+                    html_res += f"<br><br>📏 <b>Metros Lineares: {int(metros_lineares):,} m/ha</b>"
+                    html_res += f"<br>🚜 <b>Regular Máquina: {sem_metro:.1f} sementes/metro</b>"
                 
+                # Avisos técnicos pequenos
+                if vc < 100 or perda > 0:
+                     html_res += f"<br><br><span style='font-size:0.8em; color:#bbb'>(Baseado em VC: {vc:.1f}% e Perda: {perda}%)</span>"
+
                 html_res += "</div>"
                 st.markdown(html_res, unsafe_allow_html=True)
                 
-                # Peso
+                # Peso (se PMS > 0)
                 if pms > 0:
                     kg_ha = (pop_necessaria * pms) / 1000000
                     st.info(f"📦 Comprar: **{kg_ha:.1f} kg/ha**")
