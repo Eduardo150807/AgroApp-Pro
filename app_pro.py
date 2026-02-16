@@ -109,7 +109,7 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
 # --- LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if 'logado' not in st.session_state: st.session_state['logado'] = False
-CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
+CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025", "Lhara": "L2026"}
 
 if not st.session_state['logado']:
     st.markdown("<br><h1 style='text-align:center'>🔐 AgroMind Pro</h1>", unsafe_allow_html=True)
@@ -314,3 +314,4 @@ with aba3:
         elif "BA" in tipo: res = val * 9.68
         elif "Saca" in tipo: res = (val * 60) / 1000
         st.metric("Resultado", f"{res:.2f}")
+
