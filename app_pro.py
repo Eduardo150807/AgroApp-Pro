@@ -11,7 +11,6 @@ st.set_page_config(page_title="AgroMind Pro", page_icon="🚜", layout="wide", i
 # --- CSS PREMIUM (VISUAL LIMPO) ---
 st.markdown("""
     <style>
-    /* Esconde menu padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -19,16 +18,12 @@ st.markdown("""
     
     .stApp { background-color: #0E1117; }
 
-    /* Estilo das Abas */
+    /* Abas */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
-        white-space: pre-wrap;
         background-color: #161b22;
         border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
         color: #fff;
     }
     .stTabs [aria-selected="true"] {
@@ -45,7 +40,7 @@ st.markdown("""
     .market-symbol { color: #8b949e; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-bottom: 5px; }
     .market-price { color: #f0f6fc; font-size: 1.4em; font-weight: 800; margin: 5px 0; }
     
-    /* Resultados Calculadoras */
+    /* Resultados */
     .result-box {
         background-color: #0d4429;
         color: #ffffff;
@@ -122,28 +117,27 @@ if not st.session_state['logado']:
             else: st.error("Acesso Negado")
     st.stop()
 
-# --- APP PRINCIPAL (ABAS) ---
+# --- APP ---
 st.title("🚜 AgroMind")
 
-# AS 3 ABAS SAGRADAS
 aba1, aba2, aba3 = st.tabs(["💬 Chat IA", "📈 Mercado", "🧰 Ferramentas"])
 
-# --- ABA 1: CHAT ---
+# --- CHAT ---
 with aba1:
     for m in st.session_state["messages"]:
         classe = "chat-user" if m["role"] == "user" else "chat-ai"
         st.markdown(f"<div class='{classe}'>{m['content']}</div>", unsafe_allow_html=True)
 
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1, 6])
+    c1, c2, c3 = st.columns([1, 1, 6])
     arquivo = None
-    with col1:
+    with c1:
         with st.popover("📎"):
             tipo = st.radio("Anexar:", ["Galeria", "Câmera", "PDF"])
             if tipo == "Galeria": arquivo = st.file_uploader("Img", type=["jpg", "png"])
             elif tipo == "Câmera": arquivo = st.camera_input("Foto")
             else: arquivo = st.file_uploader("Doc", type=["pdf"])
-    with col2:
+    with c2:
         audio = st.audio_input("🎙️")
         if audio: arquivo = audio
     
@@ -162,7 +156,7 @@ with aba1:
         st.session_state["messages"].append({"role": "assistant", "content": res})
         st.rerun()
 
-# --- ABA 2: MERCADO ---
+# --- MERCADO ---
 with aba2:
     st.markdown("### 💹 Cotações do Dia")
     c1, c2 = st.columns(2)
@@ -171,34 +165,54 @@ with aba2:
     c3, c4 = st.columns(2)
     with c3: st.markdown("""<div class="market-card"><div class="market-symbol">BOI</div><div class="market-price">R$ 235,00</div></div>""", unsafe_allow_html=True)
     with c4: st.markdown("""<div class="market-card"><div class="market-symbol">DÓLAR</div><div class="market-price">R$ 5,04</div></div>""", unsafe_allow_html=True)
-    
-    st.markdown("---")
     st.subheader("📰 Notícias")
     news = carregar_noticias()
     if news:
         for n in news:
             st.markdown(f"""<div style="background:#161b22; padding:10px; margin-bottom:5px; border-radius:5px;"><a href="{n['link']}" target="_blank" style="text-decoration:none; color:#58a6ff; font-weight:bold;">{n['titulo']}</a></div>""", unsafe_allow_html=True)
 
-# --- ABA 3: FERRAMENTAS (Organizadas) ---
+# --- FERRAMENTAS ---
 with aba3:
     st.markdown("### 🚜 Caixa de Ferramentas")
     
-    # 1. PLANTIO (Dentro de um Expander para ficar limpo)
-    with st.expander("🌱 Plantio & Sementes", expanded=True):
+    # --- PLANTIO (CORRIGIDO) ---
+    with st.expander("🌱 Plantio (Regulagem)", expanded=True):
         c1, c2 = st.columns(2)
         with c1: 
-            pop = st.number_input("População (mil/ha):", value=300)
-            germ = st.number_input("Germinação (%):", value=90)
+            pop = st.number_input("População (mil plantas/ha):", value=300)
+            espacamento = st.number_input("Espaçamento (cm):", value=50.0)
         with c2: 
-            pms = st.number_input("PMS (g):", value=180.0)
-            margem = st.slider("Margem Seg. (%)", 0, 20, 10)
+            germ = st.number_input("Germinação (%):", value=90)
+            pms = st.number_input("PMS (g) [Opcional]:", value=0.0)
         
-        if st.button("Calcular Sementes"):
-            pop_real = (pop * 1000) / (germ / 100) * (1 + margem/100)
-            kg_ha = (pop_real * pms) / 1000000
-            st.markdown(f"<div class='result-box'>📦 Comprar: {kg_ha:.2f} kg/ha<br>🌱 Total: {int(pop_real):,} sementes/ha</div>", unsafe_allow_html=True)
+        if st.button("Calcular Plantio"):
+            # 1. População Real necessária (considerando perdas de germinação)
+            # Se germinação for 90%, preciso plantar mais para sobrar 100% do desejado
+            pop_real = (pop * 1000) / (germ / 100)
+            
+            # 2. Metros Lineares em 1 hectare
+            # 10.000 m2 / espaçamento (m)
+            metros_lineares = 10000 / (espacamento / 100)
+            
+            # 3. Sementes por metro
+            sem_metro = pop_real / metros_lineares
+            
+            # Resultado Principal (Sementes/m)
+            st.markdown(f"""
+            <div class="result-box">
+            📏 Regular Máquina: {sem_metro:.1f} sementes/metro<br>
+            🌱 Total Sementes: {int(pop_real):,} /ha
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Resultado Opcional (KG/ha) - Só aparece se tiver PMS
+            if pms > 0:
+                kg_ha = (pop_real * pms) / 1000000
+                st.info(f"📦 Peso necessário: **{kg_ha:.1f} kg/ha**")
+            else:
+                st.caption("ℹ️ Preencha o PMS se quiser saber o peso em Kg/ha.")
 
-    # 2. ADUBAÇÃO
+    # --- ADUBAÇÃO ---
     with st.expander("🌾 Adubação & Calagem"):
         c1, c2 = st.columns(2)
         with c1:
@@ -212,8 +226,8 @@ with aba3:
             nc = (ctc * (v2 - v1)) / prnt
             st.markdown(f"<div class='result-box'>🚜 Aplicar: {nc:.2f} toneladas/ha</div>", unsafe_allow_html=True)
 
-    # 3. PULVERIZAÇÃO
-    with st.expander("🧪 Pulverização (Tanque)"):
+    # --- PULVERIZAÇÃO ---
+    with st.expander("🧪 Pulverização"):
         c1, c2 = st.columns(2)
         with c1:
             tanque = st.number_input("Tanque (L):", value=2000)
@@ -225,7 +239,7 @@ with aba3:
             total = area * dose
             st.markdown(f"<div class='result-box'>🚜 Cobre: {area:.1f} ha<br>🧪 Pôr no Tanque: {total:.2f} L (ou Kg)</div>", unsafe_allow_html=True)
 
-    # 4. CONVERSÕES
+    # --- CONVERSÕES ---
     with st.expander("📊 Conversor de Medidas"):
         c1, c2 = st.columns(2)
         with c1: val = st.number_input("Valor:", value=1.0)
