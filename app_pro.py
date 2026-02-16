@@ -4,32 +4,58 @@ from PIL import Image
 import PyPDF2
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
-import io
 
 # --- CONFIGURAÇÃO AGROMIND OS ---
-st.set_page_config(page_title="AgroMind Pro", page_icon="🚜", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="AgroMind OS", page_icon="🚜", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS PROFISSIONAL (AGROMIND OS) ---
+# --- GESTÃO DE NAVEGAÇÃO (SESSION STATE) ---
+if 'pagina_atual' not in st.session_state:
+    st.session_state['pagina_atual'] = 'dashboard'
+
+def navegar_para(pagina):
+    st.session_state['pagina_atual'] = pagina
+    st.rerun()
+
+# --- CSS PREMIUM (ESTILO DE CARDS) ---
 st.markdown("""
     <style>
-    /* Geral */
+    /* Fundo */
     .stApp { background-color: #0E1117; }
     
-    /* Sidebar */
-    [data-testid="stSidebar"] { background-color: #161b22; border-right: 1px solid #30363d; }
+    /* Esconde menu padrão feio */
+    [data-testid="stSidebarNav"] {display: none;}
     
-    /* Cards de Ferramentas */
+    /* ESTILO DOS CARDS DO DASHBOARD */
+    div.stButton > button {
+        width: 100%;
+        height: 100px;
+        border-radius: 12px;
+        border: 1px solid #30363d;
+        background-color: #161b22;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    div.stButton > button:hover {
+        background-color: #238636; /* Verde Agro ao passar o mouse */
+        border-color: #2ea043;
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+    }
+    div.stButton > button:active {
+        transform: translateY(1px);
+    }
+
+    /* Cards Internos (Ferramentas) */
     .tool-card { 
         background-color: #1f2937; 
         padding: 20px; 
         border-radius: 12px; 
         border: 1px solid #374151; 
         margin-bottom: 20px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .tool-title { color: #58a6ff; font-size: 1.2em; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-    
-    /* Resultado em Destaque */
     .result-box {
         background-color: #0d4429;
         color: #ffffff;
@@ -51,7 +77,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES TÉCNICAS ---
 def ler_pdf(arquivo):
     try:
         leitor = PyPDF2.PdfReader(arquivo)
@@ -73,8 +99,7 @@ def carregar_noticias():
     except: return []
 
 def conectar_ia_segura():
-    if "GOOGLE_API_KEY" not in st.secrets:
-        return None, "Erro: Configure a GOOGLE_API_KEY no Secrets."
+    if "GOOGLE_API_KEY" not in st.secrets: return None, "Erro API"
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     try:
         lista = genai.list_models()
@@ -82,19 +107,14 @@ def conectar_ia_segura():
             if 'flash' in m.name and 'generateContent' in m.supported_generation_methods:
                 return genai.GenerativeModel(m.name), None
         return genai.GenerativeModel('gemini-pro'), None
-    except:
-        return genai.GenerativeModel('gemini-pro'), None
+    except: return genai.GenerativeModel('gemini-pro'), None
 
 def gerar_resposta_inteligente(prompt, historico, midia=None):
     model, erro = conectar_ia_segura()
     if erro: return erro
-    
     prompt_sistema = f"""
-    Você é o AgroMind, consultor técnico.
-    DIRETRIZES:
-    1. Se for áudio, entenda e responda.
-    2. Calagem: Use NC = (CTC x (V2 - V1)) / PRNT.
-    3. Seja direto.
+    Você é o AgroMind. Consultor técnico.
+    Diretrizes: Respostas curtas, técnicas e em tópicos.
     Histórico: {historico}
     Input: {prompt}
     """
@@ -121,186 +141,163 @@ if not st.session_state['logado']:
             else: st.error("Acesso Negado")
     st.stop()
 
-# --- MENU LATERAL (SIDEBAR) ---
-with st.sidebar:
-    st.title("🚜 AgroMind")
-    st.markdown("---")
-    menu = st.radio(
-        "Navegação:",
-        ["💬 Chat IA", "🌱 Plantio & Sementes", "🌾 Adubação & Solo", "🧪 Pulverização", "📊 Conversões", "📈 Mercado", "💧 Irrigação", "🐄 Pecuária", "🚜 Máquinas", "💰 Custos"]
-    )
-    st.markdown("---")
-    st.info("Versão Pro 22.0")
+# --- BOTÃO VOLTAR (Só aparece se não estiver no Dashboard) ---
+if st.session_state['pagina_atual'] != 'dashboard':
+    with st.sidebar:
+        st.title("🚜 Menu")
+        if st.button("🏠 Voltar ao Início"):
+            navegar_para('dashboard')
+        st.markdown("---")
+        st.caption("AgroMind OS v23.0")
 
-# --- LÓGICA DAS PÁGINAS ---
+# =========================================================
+#                       PÁGINAS
+# =========================================================
 
-# 1. CHAT IA
-if menu == "💬 Chat IA":
-    st.header("💬 Consultor Inteligente")
+# --- 0. DASHBOARD (MENU PRINCIPAL) ---
+if st.session_state['pagina_atual'] == 'dashboard':
+    st.title("🚜 AgroMind OS")
+    st.markdown("### Selecione um Módulo")
     
+    # Grid de Menu (3 colunas)
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("💬 Chat IA"): navegar_para('chat')
+        if st.button("🧪 Pulverização"): navegar_para('pulverizacao')
+        if st.button("💧 Irrigação"): navegar_para('irrigacao') # Placeholder
+        
+    with col2:
+        if st.button("🌱 Plantio & Sementes"): navegar_para('plantio')
+        if st.button("📊 Conversões"): navegar_para('conversoes')
+        if st.button("🐄 Pecuária"): navegar_para('pecuaria') # Placeholder
+
+    with col3:
+        if st.button("🌾 Adubação & Solo"): navegar_para('adubacao')
+        if st.button("📈 Mercado & News"): navegar_para('mercado')
+        if st.button("🚜 Máquinas"): navegar_para('maquinas') # Placeholder
+
+    st.markdown("---")
+    st.caption("Sistema de Gestão Técnica Integrada")
+
+
+# --- 1. CHAT IA ---
+elif st.session_state['pagina_atual'] == 'chat':
+    st.header("💬 Consultor Inteligente")
     for m in st.session_state["messages"]:
         classe = "chat-user" if m["role"] == "user" else "chat-ai"
         st.markdown(f"<div class='{classe}'>{m['content']}</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 6])
+    c1, c2, c3 = st.columns([1, 1, 6])
     arquivo = None
-    with col1:
+    with c1:
         with st.popover("📎"):
             tipo = st.radio("Anexar:", ["Galeria", "Câmera", "PDF"])
             if tipo == "Galeria": arquivo = st.file_uploader("Img", type=["jpg", "png"])
             elif tipo == "Câmera": arquivo = st.camera_input("Foto")
             else: arquivo = st.file_uploader("Doc", type=["pdf"])
-    with col2:
+    with c2:
         audio = st.audio_input("🎙️")
         if audio: arquivo = audio
     
     prompt = st.chat_input("Pergunte ao AgroMind...")
-    
     if prompt or arquivo:
         txt = prompt if prompt else "Analise este anexo."
         st.session_state["messages"].append({"role": "user", "content": txt})
-        
         midia_proc = arquivo
-        # Tratamento de Áudio e Mídia
         if arquivo and hasattr(arquivo, 'type'):
             if "pdf" in arquivo.type: txt += f"\nPDF: {ler_pdf(arquivo)}"; midia_proc = None
             elif "image" in arquivo.type: midia_proc = Image.open(arquivo)
             elif "audio" in arquivo.type:
                 midia_proc = {"mime_type": arquivo.type, "data": arquivo.getvalue()}
                 txt = "Áudio enviado. Transcreva e responda."
-
         res = gerar_resposta_inteligente(txt, str(st.session_state["messages"][-5:]), midia_proc)
         st.session_state["messages"].append({"role": "assistant", "content": res})
         st.rerun()
 
-# 2. PLANTIO
-elif menu == "🌱 Plantio & Sementes":
-    st.header("🌱 Planejamento de Plantio")
-    
+
+# --- 2. PLANTIO ---
+elif st.session_state['pagina_atual'] == 'plantio':
+    st.header("🌱 Plantio & Sementes")
     st.markdown('<div class="tool-card"><div class="tool-title">🌽 Sementes por Hectare</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    with c1: pop = st.number_input("População (mil plantas/ha):", value=300)
+    with c1: pop = st.number_input("População (mil/ha):", value=300)
     with c2: germ = st.number_input("Germinação (%):", value=90)
     with c3: pureza = st.number_input("Pureza (%):", value=98)
-    
-    pms = st.number_input("PMS (Peso de 1000 sementes - g):", value=180.0)
+    pms = st.number_input("PMS (g):", value=180.0)
     margem = st.slider("Margem de Segurança (%)", 0, 20, 10)
     
-    if st.button("Calcular Sementes"):
-        # Fator de valor cultural
+    if st.button("Calcular"):
         vc = (germ * pureza) / 100
-        # Plantas necessárias reais
-        pop_real = (pop * 1000) / (vc / 100)
-        # Adiciona margem
-        pop_real = pop_real * (1 + margem/100)
-        
+        pop_real = (pop * 1000) / (vc / 100) * (1 + margem/100)
         kg_ha = (pop_real * pms) / 1000000
-        
-        st.markdown(f"""
-        <div class="result-box">
-        📦 Necessidade Estimada: {kg_ha:.2f} kg/ha<br>
-        🌱 Sementes Totais (com {margem}% margem): {int(pop_real):,} unidades/ha
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='result-box'>📦 Comprar: {kg_ha:.2f} kg/ha<br>🌱 Total sementes: {int(pop_real):,} /ha</div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 3. ADUBAÇÃO
-elif menu == "🌾 Adubação & Solo":
-    st.header("🌾 Correção e Fertilidade")
-    
-    aba_cal, aba_npk = st.tabs(["Calagem", "Adubação NPK"])
-    
-    with aba_cal:
-        st.markdown('<div class="tool-card"><div class="tool-title">⚪ Calagem (Sat. Bases)</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            ctc = st.number_input("CTC (cmolc/dm³):", value=10.0)
-            v1 = st.number_input("V% Atual:", value=40.0)
-        with c2:
-            v2 = st.number_input("V% Desejado (Meta):", value=70.0)
-            prnt = st.number_input("PRNT Calcário (%):", value=80.0)
-            
-        if st.button("Calcular Calagem"):
-            nc = (ctc * (v2 - v1)) / prnt
-            st.markdown(f"""
-            <div class="result-box">
-            🚜 Aplicar: {nc:.2f} toneladas/ha
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    with aba_npk:
-        st.info("⚠️ Módulo NPK em desenvolvimento (Próxima atualização)")
+# --- 3. ADUBAÇÃO ---
+elif st.session_state['pagina_atual'] == 'adubacao':
+    st.header("🌾 Adubação & Solo")
+    st.markdown('<div class="tool-card"><div class="tool-title">⚪ Calagem (Sat. Bases)</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        ctc = st.number_input("CTC (cmolc/dm³):", value=10.0)
+        v1 = st.number_input("V% Atual:", value=40.0)
+    with c2:
+        v2 = st.number_input("V% Desejado:", value=70.0)
+        prnt = st.number_input("PRNT Calcário (%):", value=80.0)
+    if st.button("Calcular Calagem"):
+        nc = (ctc * (v2 - v1)) / prnt
+        st.markdown(f"<div class='result-box'>🚜 Aplicar: {nc:.2f} ton/ha</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# 4. PULVERIZAÇÃO
-elif menu == "🧪 Pulverização":
-    st.header("🧪 Tecnologia de Aplicação")
+
+# --- 4. PULVERIZAÇÃO ---
+elif st.session_state['pagina_atual'] == 'pulverizacao':
+    st.header("🧪 Pulverização")
     st.markdown('<div class="tool-card"><div class="tool-title">💧 Volume de Calda</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
+    c1, c2 = st.columns(2)
+    with c1:
         tanque = st.number_input("Tanque (Litros):", value=2000)
-        vazao = st.number_input("Taxa de Aplicação (L/ha):", value=150)
-    with col2:
-        dose = st.number_input("Dose Produto (L ou Kg / ha):", value=0.5)
-        
+        vazao = st.number_input("Taxa (L/ha):", value=150)
+    with c2: dose = st.number_input("Dose (L ou Kg / ha):", value=0.5)
     if st.button("Calcular Tanque"):
         area = tanque / vazao
-        prod_total = area * dose
-        st.markdown(f"""
-        <div class="result-box">
-        🚜 1 Tanque cobre: {area:.1f} hectares<br>
-        🧪 Colocar no tanque: {prod_total:.2f} L (ou Kg) do produto
-        </div>
-        """, unsafe_allow_html=True)
+        total = area * dose
+        st.markdown(f"<div class='result-box'>🚜 Cobre: {area:.1f} ha<br>🧪 Produto no tanque: {total:.2f} L (ou Kg)</div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 5. CONVERSÕES
-elif menu == "📊 Conversões":
-    st.header("📊 Conversor Agrícola")
+
+# --- 5. CONVERSÕES ---
+elif st.session_state['pagina_atual'] == 'conversoes':
+    st.header("📊 Conversões Rápidas")
     st.markdown('<div class="tool-card">', unsafe_allow_html=True)
     val = st.number_input("Valor:", value=1.0)
-    tipo = st.selectbox("Converter:", [
-        "Alqueire Paulista -> Hectare",
-        "Alqueire Goiano -> Hectare",
-        "Alqueire Baiano -> Hectare",
-        "Saca (60kg) -> Tonelada",
-        "Hectare -> Metros Quadrados"
-    ])
-    
+    tipo = st.selectbox("Tipo:", ["Alqueire SP -> ha", "Alqueire GO -> ha", "Alqueire BA -> ha", "Saca (60kg) -> Ton"])
     res = 0
-    if tipo == "Alqueire Paulista -> Hectare": res = val * 2.42
-    elif tipo == "Alqueire Goiano -> Hectare": res = val * 4.84
-    elif tipo == "Alqueire Baiano -> Hectare": res = val * 9.68
-    elif tipo == "Saca (60kg) -> Tonelada": res = (val * 60) / 1000
-    elif tipo == "Hectare -> Metros Quadrados": res = val * 10000
-    
+    if "SP" in tipo: res = val * 2.42
+    elif "GO" in tipo: res = val * 4.84
+    elif "BA" in tipo: res = val * 9.68
+    elif "Saca" in tipo: res = (val * 60) / 1000
     st.markdown(f"<div class='result-box'>Resultado: {res:.2f}</div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 6. MERCADO
-elif menu == "📈 Mercado":
-    st.header("📈 Cotações & Notícias")
-    c1, c2, c3, c4 = st.columns(4)
+
+# --- 6. MERCADO ---
+elif st.session_state['pagina_atual'] == 'mercado':
+    st.header("📈 Mercado & News")
+    c1, c2 = st.columns(2)
     with c1: st.markdown("""<div class="market-card"><div class="market-symbol">SOJA</div><div class="market-price">R$ 128,50</div></div>""", unsafe_allow_html=True)
     with c2: st.markdown("""<div class="market-card"><div class="market-symbol">MILHO</div><div class="market-price">R$ 58,90</div></div>""", unsafe_allow_html=True)
-    with c3: st.markdown("""<div class="market-card"><div class="market-symbol">BOI</div><div class="market-price">R$ 235,00</div></div>""", unsafe_allow_html=True)
-    with c4: st.markdown("""<div class="market-card"><div class="market-symbol">DÓLAR</div><div class="market-price">R$ 5,04</div></div>""", unsafe_allow_html=True)
-    
-    st.subheader("📰 Feed de Notícias")
-    noticias = carregar_noticias()
-    if noticias:
-        for n in noticias:
-            st.markdown(f"""<a href="{n['link']}" target="_blank" style="text-decoration:none;"><div class="tool-card" style="padding:10px; margin-bottom:10px;"><span style="color:#58a6ff; font-weight:bold;">{n['titulo']}</span><br><span style="color:#8b949e; font-size:0.8em;">{n['data']}</span></div></a>""", unsafe_allow_html=True)
+    st.subheader("📰 Notícias")
+    news = carregar_noticias()
+    if news:
+        for n in news:
+            st.markdown(f"""<a href="{n['link']}" target="_blank" style="text-decoration:none;"><div class="tool-card" style="padding:10px; margin-bottom:5px;"><span style="color:#58a6ff; font-weight:bold;">{n['titulo']}</span></div></a>""", unsafe_allow_html=True)
 
-# MÓDULOS EM BREVE
+# --- 7. MÓDULOS EM BREVE ---
 else:
-    st.header(f"🚧 {menu}")
-    st.warning("Este módulo está no roadmap e será liberado na próxima atualização do AgroMind OS.")
-    st.markdown("""
-    **Funcionalidades previstas:**
-    * Cálculos detalhados da categoria
-    * Geração de relatórios PDF
-    * Histórico de operações
-    """)
+    st.header("🚧 Em Desenvolvimento")
+    st.info("Este módulo estará disponível na próxima atualização.")
+    if st.button("Voltar"): navegar_para('dashboard')
