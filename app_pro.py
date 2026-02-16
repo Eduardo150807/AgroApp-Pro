@@ -175,42 +175,48 @@ with aba2:
 with aba3:
     st.markdown("### 🚜 Caixa de Ferramentas")
     
-    # --- PLANTIO (CORRIGIDO) ---
-    with st.expander("🌱 Plantio (Regulagem)", expanded=True):
+    # --- PLANTIO (AGORA COM PUREZA) ---
+    with st.expander("🌱 Plantio & Sementes", expanded=True):
+        st.write("Dados da Cultura:")
         c1, c2 = st.columns(2)
         with c1: 
-            pop = st.number_input("População (mil plantas/ha):", value=300)
+            pop = st.number_input("População (mil/ha):", value=300)
             espacamento = st.number_input("Espaçamento (cm):", value=50.0)
         with c2: 
-            germ = st.number_input("Germinação (%):", value=90)
             pms = st.number_input("PMS (g) [Opcional]:", value=0.0)
         
+        st.write("Qualidade da Semente:")
+        c3, c4 = st.columns(2)
+        with c3: germ = st.number_input("Germinação (%):", value=90)
+        with c4: pureza = st.number_input("Pureza (%):", value=98)
+        
         if st.button("Calcular Plantio"):
-            # 1. População Real necessária (considerando perdas de germinação)
-            # Se germinação for 90%, preciso plantar mais para sobrar 100% do desejado
-            pop_real = (pop * 1000) / (germ / 100)
+            # 1. Cálculo do Valor Cultural (VC)
+            vc = (germ * pureza) / 100
             
-            # 2. Metros Lineares em 1 hectare
-            # 10.000 m2 / espaçamento (m)
+            # 2. População Real necessária (Corrigindo pelo VC)
+            # Se VC é 88%, preciso de (Pop / 0.88)
+            pop_real = (pop * 1000) / (vc / 100)
+            
+            # 3. Metros Lineares em 1 hectare
             metros_lineares = 10000 / (espacamento / 100)
             
-            # 3. Sementes por metro
+            # 4. Sementes por metro
             sem_metro = pop_real / metros_lineares
             
-            # Resultado Principal (Sementes/m)
             st.markdown(f"""
             <div class="result-box">
+            🎯 Valor Cultural (VC): {vc:.1f}%<br>
             📏 Regular Máquina: {sem_metro:.1f} sementes/metro<br>
             🌱 Total Sementes: {int(pop_real):,} /ha
             </div>
             """, unsafe_allow_html=True)
             
-            # Resultado Opcional (KG/ha) - Só aparece se tiver PMS
             if pms > 0:
                 kg_ha = (pop_real * pms) / 1000000
                 st.info(f"📦 Peso necessário: **{kg_ha:.1f} kg/ha**")
             else:
-                st.caption("ℹ️ Preencha o PMS se quiser saber o peso em Kg/ha.")
+                st.caption("ℹ️ Preencha o PMS para calcular Kg/ha.")
 
     # --- ADUBAÇÃO ---
     with st.expander("🌾 Adubação & Calagem"):
