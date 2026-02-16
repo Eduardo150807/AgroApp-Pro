@@ -11,7 +11,7 @@ st.set_page_config(page_title="AgroMind Pro", page_icon="🚜", layout="wide", i
 # --- CSS PREMIUM (VISUAL LIMPO E MODERNO) ---
 st.markdown("""
     <style>
-    /* Esconde menu padrão do Streamlit */
+    /* Esconde menu padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -82,7 +82,6 @@ def conectar_ia_segura():
     if "GOOGLE_API_KEY" not in st.secrets: return None, "Erro: Configure API KEY"
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     try:
-        # Tenta achar o modelo Flash (Melhor para áudio e rápido)
         lista = genai.list_models()
         for m in lista:
             if 'flash' in m.name and 'generateContent' in m.supported_generation_methods:
@@ -107,7 +106,7 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         return model.generate_content(prompt_sistema).text
     except Exception as e: return f"⚠️ Erro IA: {str(e)}"
 
-# --- TELA DE LOGIN ---
+# --- LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
@@ -125,21 +124,19 @@ if not st.session_state['logado']:
             else: st.error("Acesso Negado")
     st.stop()
 
-# --- APP PRINCIPAL (ABAS) ---
+# --- APP PRINCIPAL ---
 st.title("🚜 AgroMind")
 
 aba1, aba2, aba3 = st.tabs(["💬 Chat IA", "📈 Mercado", "🧰 Ferramentas"])
 
-# --- ABA 1: CHAT INTELIGENTE ---
+# --- ABA 1: CHAT ---
 with aba1:
-    # Exibe Histórico
     for m in st.session_state["messages"]:
         classe = "chat-user" if m["role"] == "user" else "chat-ai"
         st.markdown(f"<div class='{classe}'>{m['content']}</div>", unsafe_allow_html=True)
 
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     
-    # Área de Input
     c1, c2, c3 = st.columns([1, 1, 6])
     arquivo = None
     with c1:
@@ -159,7 +156,6 @@ with aba1:
         st.session_state["messages"].append({"role": "user", "content": txt})
         
         midia_proc = arquivo
-        # Processamento de Mídia (Correção do Áudio)
         if arquivo and hasattr(arquivo, 'type'):
             if "pdf" in arquivo.type: 
                 txt += f"\nPDF: {ler_pdf(arquivo)}"
@@ -167,7 +163,6 @@ with aba1:
             elif "image" in arquivo.type: 
                 midia_proc = Image.open(arquivo)
             elif "audio" in arquivo.type:
-                # Transforma áudio em Blob para a IA (Evita erro de loop)
                 midia_proc = {"mime_type": arquivo.type, "data": arquivo.getvalue()}
                 txt = "Áudio recebido do produtor. Responda a dúvida falada."
 
@@ -175,7 +170,7 @@ with aba1:
         st.session_state["messages"].append({"role": "assistant", "content": res})
         st.rerun()
 
-# --- ABA 2: MERCADO & NOTÍCIAS ---
+# --- ABA 2: MERCADO ---
 with aba2:
     st.markdown("### 💹 Cotações do Dia")
     c1, c2 = st.columns(2)
@@ -194,57 +189,81 @@ with aba2:
     else:
         st.info("Carregando notícias...")
 
-# --- ABA 3: CAIXA DE FERRAMENTAS ---
+# --- ABA 3: FERRAMENTAS ---
 with aba3:
     st.markdown("### 🚜 Ferramentas Técnicas")
     
-    # 1. PLANTIO (Corrigido: Pureza + Opcionais)
-    with st.expander("🌱 Plantio (Cálculo de Sementes)", expanded=True):
-        st.write("**Dados da Cultura:**")
-        c1, c2 = st.columns(2)
-        with c1: 
-            pop = st.number_input("População (mil/ha):", value=300)
+    # 1. PLANTIO (FLEXÍVEL E INTELIGENTE)
+    with st.expander("🌱 Plantio (Cálculo Flexível)", expanded=True):
+        
+        # Modo Simples ou Avançado
+        modo_avancado = st.checkbox("🛠️ Modo Avançado (Qualidade de Semente e Perdas)")
+        
+        c_pop, c_esp = st.columns(2)
+        with c_pop: 
+            pop = st.number_input("População Desejada (mil/ha):", value=300.0)
+        with c_esp: 
             espacamento = st.number_input("Espaçamento (cm) [Opcional]:", value=0.0)
-        with c2: 
-            pms = st.number_input("PMS (g) [Opcional]:", value=0.0)
-        
-        st.write("**Qualidade da Semente:**")
-        c3, c4 = st.columns(2)
-        with c3: germ = st.number_input("Germinação (%):", value=90)
-        with c4: pureza = st.number_input("Pureza (%):", value=98)
-        
+
+        # Valores padrão (Modo Simples)
+        germ = 100.0
+        pureza = 100.0
+        pms = 0.0
+        perda = 0.0
+
+        # Se Modo Avançado estiver ativado, mostra os campos
+        if modo_avancado:
+            st.markdown("---")
+            st.caption("📋 Detalhes da Semente e Perda")
+            
+            c1, c2, c3, c4 = st.columns(4)
+            with c1: germ = st.number_input("Germinação (%):", value=100.0, max_value=100.0)
+            with c2: pureza = st.number_input("Pureza (%):", value=100.0, max_value=100.0)
+            with c3: perda = st.number_input("Perda Estimada (%):", value=0.0, max_value=90.0)
+            with c4: pms = st.number_input("PMS (g):", value=0.0)
+
         if st.button("Calcular Plantio"):
             # 1. Valor Cultural (VC)
+            # Se usuário não preencheu (Modo Simples), usa 100%
             vc = (germ * pureza) / 100
             
-            # 2. População Real (Corrigida pelo VC)
-            if vc > 0:
-                pop_real = (pop * 1000) / (vc / 100)
+            # 2. Fator de Perda
+            # Se usuário não preencheu, perda é 0, fator é 1 (sem perda)
+            fator_perda = 1 - (perda / 100)
+            
+            if fator_perda <= 0:
+                st.error("A perda não pode ser 100%.")
+            else:
+                # 3. População Real Necessária
+                # Fórmula: Pop / (VC * FatorPerda)
+                pop_necessaria = (pop * 1000) / ((vc / 100) * fator_perda)
                 
-                # Monta o HTML do resultado
+                # HTML do Resultado
                 html_res = f"""
                 <div class="result-box">
-                🎯 Valor Cultural (VC): {vc:.1f}%<br>
-                🌱 Total de Sementes: {int(pop_real):,} /ha
+                🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>
+                🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>
                 """
                 
-                # Se tiver espaçamento, mostra a regulagem
+                # Detalhes técnicos se tiver perda ou qualidade baixa
+                if vc < 100 or perda > 0:
+                     html_res += f"<br><span style='font-size:0.8em; color:#bbb'>(Considerando VC: {vc:.1f}% e Perda: {perda}%)</span>"
+
+                # Regulagem
                 if espacamento > 0:
                     metros_lineares = 10000 / (espacamento / 100)
-                    sem_metro = pop_real / metros_lineares
-                    html_res += f"<br>📏 <b>Regular Máquina: {sem_metro:.1f} sementes/metro</b>"
-                else:
-                    html_res += "<br><i>(Espaçamento não informado: Regulagem por metro oculta)</i>"
+                    sem_metro = pop_necessaria / metros_lineares
+                    html_res += f"<br><br>📏 <b>Regular Máquina: {sem_metro:.1f} sementes/metro</b>"
                 
                 html_res += "</div>"
                 st.markdown(html_res, unsafe_allow_html=True)
                 
-                # Se tiver PMS, mostra o peso
+                # Peso
                 if pms > 0:
-                    kg_ha = (pop_real * pms) / 1000000
-                    st.info(f"📦 Peso necessário para compra: **{kg_ha:.1f} kg/ha**")
-            else:
-                st.error("Erro: Germinação e Pureza devem ser maiores que 0.")
+                    kg_ha = (pop_necessaria * pms) / 1000000
+                    st.info(f"📦 Comprar: **{kg_ha:.1f} kg/ha**")
+                elif modo_avancado:
+                    st.caption("ℹ️ Preencha o PMS para saber quantos Kg comprar.")
 
     # 2. ADUBAÇÃO
     with st.expander("🌾 Adubação & Calagem"):
@@ -260,8 +279,6 @@ with aba3:
             if prnt > 0:
                 nc = (ctc * (v2 - v1)) / prnt
                 st.markdown(f"<div class='result-box'>🚜 Aplicar: {nc:.2f} toneladas/ha</div>", unsafe_allow_html=True)
-            else:
-                st.error("PRNT deve ser maior que 0.")
 
     # 3. PULVERIZAÇÃO
     with st.expander("🧪 Pulverização (Tanque)"):
