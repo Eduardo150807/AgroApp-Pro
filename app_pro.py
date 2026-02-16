@@ -193,73 +193,44 @@ with aba2:
 with aba3:
     st.markdown("### 🚜 Ferramentas Técnicas")
     
-    # 1. PLANTIO (ATUALIZADO COM CÁLCULO DE METROS)
+    # 1. PLANTIO
     with st.expander("🌱 Plantio (Cálculo Flexível)", expanded=True):
-        
-        modo_avancado = st.checkbox("🛠️ Modo Avançado (Qualidade de Semente e Perdas)")
-        
+        modo_avancado = st.checkbox("🛠️ Modo Avançado (Qualidade e Perdas)")
         c_pop, c_esp = st.columns(2)
-        with c_pop: 
-            pop = st.number_input("População Desejada (mil/ha):", value=300.0)
-        with c_esp: 
-            espacamento = st.number_input("Espaçamento (cm) [Opcional]:", value=0.0)
+        with c_pop: pop = st.number_input("População Desejada (mil/ha):", value=300.0)
+        with c_esp: espacamento = st.number_input("Espaçamento (cm) [Opcional]:", value=0.0)
 
-        # Defaults
-        germ = 100.0
-        pureza = 100.0
-        pms = 0.0
-        perda = 0.0
+        germ = 100.0; pureza = 100.0; pms = 0.0; perda = 0.0
 
         if modo_avancado:
             st.markdown("---")
-            st.caption("📋 Detalhes da Semente e Perda")
             c1, c2, c3, c4 = st.columns(4)
             with c1: germ = st.number_input("Germinação (%):", value=100.0, max_value=100.0)
             with c2: pureza = st.number_input("Pureza (%):", value=100.0, max_value=100.0)
-            with c3: perda = st.number_input("Perda Estimada (%):", value=0.0, max_value=90.0)
+            with c3: perda = st.number_input("Perda (%):", value=0.0, max_value=90.0)
             with c4: pms = st.number_input("PMS (g):", value=0.0)
 
         if st.button("Calcular Plantio"):
-            # 1. VC
             vc = (germ * pureza) / 100
-            
-            # 2. Perda
             fator_perda = 1 - (perda / 100)
             
             if fator_perda <= 0:
                 st.error("Erro: Perda excessiva.")
             else:
-                # 3. População Necessária
                 pop_necessaria = (pop * 1000) / ((vc / 100) * fator_perda)
                 
-                # HTML Base
-                html_res = f"""
-                <div class="result-box">
-                🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>
-                🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>
-                """
+                html_res = f"""<div class="result-box">🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>"""
                 
-                # 4. CÁLCULO DE METROS LINEARES E SEMENTES/METRO
-                # Só calcula se o usuário preencheu o espaçamento (> 0)
                 if espacamento > 0:
-                    # Metros lineares em 1 ha = 10.000 m2 / espaçamento em metros
                     metros_lineares = 10000 / (espacamento / 100)
-                    
-                    # Sementes por metro = Total Sementes / Metros Lineares
                     sem_metro = pop_necessaria / metros_lineares
-                    
-                    # Adiciona ao resultado visual
                     html_res += f"<br><br>📏 <b>Metros Lineares: {int(metros_lineares):,} m/ha</b>"
                     html_res += f"<br>🚜 <b>Regular Máquina: {sem_metro:.1f} sementes/metro</b>"
                 
-                # Avisos técnicos pequenos
-                if vc < 100 or perda > 0:
-                     html_res += f"<br><br><span style='font-size:0.8em; color:#bbb'>(Baseado em VC: {vc:.1f}% e Perda: {perda}%)</span>"
-
+                if vc < 100 or perda > 0: html_res += f"<br><br><span style='font-size:0.8em; color:#bbb'>(VC: {vc:.1f}% | Perda: {perda}%)</span>"
                 html_res += "</div>"
                 st.markdown(html_res, unsafe_allow_html=True)
                 
-                # Peso (se PMS > 0)
                 if pms > 0:
                     kg_ha = (pop_necessaria * pms) / 1000000
                     st.info(f"📦 Comprar: **{kg_ha:.1f} kg/ha**")
@@ -281,19 +252,55 @@ with aba3:
                 nc = (ctc * (v2 - v1)) / prnt
                 st.markdown(f"<div class='result-box'>🚜 Aplicar: {nc:.2f} toneladas/ha</div>", unsafe_allow_html=True)
 
-    # 3. PULVERIZAÇÃO
-    with st.expander("🧪 Pulverização (Tanque)"):
+    # 3. PULVERIZAÇÃO (ATUALIZADA: CENÁRIOS 1, 2 e 3)
+    with st.expander("🧪 Pulverização (Planejamento)"):
+        st.write("Dados Obrigatórios:")
         c1, c2 = st.columns(2)
         with c1:
-            tanque = st.number_input("Tanque (L):", value=2000)
-            vazao = st.number_input("Vazão (L/ha):", value=150)
-        with c2: dose = st.number_input("Dose (L ou Kg / ha):", value=0.5)
+            tanque = st.number_input("Capacidade do Tanque (L):", value=2000.0)
+        with c2:
+            vazao = st.number_input("Volume de Calda (L/ha):", value=150.0)
+
+        st.write("Dados Opcionais (Preencha para mais detalhes):")
+        c3, c4 = st.columns(2)
+        with c3:
+            dose = st.number_input("Dose do Produto (L ou Kg/ha):", value=0.0)
+        with c4:
+            area_total = st.number_input("Área Total (ha):", value=0.0)
         
-        if st.button("Calcular Calda"):
-            if vazao > 0:
-                area = tanque / vazao
-                total = area * dose
-                st.markdown(f"<div class='result-box'>🚜 Cobre: {area:.1f} ha<br>🧪 Pôr no Tanque: {total:.2f} L (ou Kg)</div>", unsafe_allow_html=True)
+        if st.button("Calcular Pulverização"):
+            if vazao > 0 and tanque > 0:
+                # 1. CÁLCULO BÁSICO (CENÁRIO 1)
+                area_tanque = tanque / vazao
+                
+                html_res = f"""<div class="result-box">
+                🚜 <b>Um tanque cobre: {area_tanque:.2f} ha</b>"""
+
+                # 2. CÁLCULO DE PRODUTO (CENÁRIO 2)
+                if dose > 0:
+                    prod_tanque = area_tanque * dose
+                    html_res += f"<br>🧪 <b>Colocar no Tanque: {prod_tanque:.2f} (L ou Kg)</b>"
+                else:
+                    html_res += "<br><i>(Preencha a Dose para saber quanto produto pôr no tanque)</i>"
+
+                # 3. PLANEJAMENTO TOTAL (CENÁRIO 3)
+                if area_total > 0:
+                    num_tanques = area_total / area_tanque
+                    vol_total = area_total * vazao
+                    html_res += f"<br><br>📋 <b>Planejamento Total ({area_total} ha):</b>"
+                    html_res += f"<br>💧 Volume Total de Calda: {vol_total:,.0f} L"
+                    html_res += f"<br>🔄 Tanques Necessários: {num_tanques:.1f} viagens"
+                    
+                    if dose > 0:
+                        prod_total = area_total * dose
+                        html_res += f"<br>📦 Produto Total Necessário: {prod_total:.1f} (L ou Kg)"
+                else:
+                    html_res += "<br><i>(Preencha Área Total para ver o planejamento logístico)</i>"
+                
+                html_res += "</div>"
+                st.markdown(html_res, unsafe_allow_html=True)
+            else:
+                st.error("Tanque e Vazão devem ser maiores que 0.")
 
     # 4. CONVERSÕES
     with st.expander("📊 Conversor de Medidas"):
