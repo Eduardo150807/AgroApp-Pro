@@ -4,7 +4,7 @@ from PIL import Image
 import PyPDF2
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
-import time  # <--- IMPORTANTE: Adicionei isso para o efeito de carregamento
+import time
 
 # --- CONFIGURAÇÃO AGROMIND ---
 st.set_page_config(page_title="AgroMind Pro", page_icon="🚜", layout="wide", initial_sidebar_state="collapsed")
@@ -107,7 +107,7 @@ def gerar_resposta_inteligente(prompt, historico, midia=None):
         return model.generate_content(prompt_sistema).text
     except Exception as e: return f"⚠️ Erro IA: {str(e)}"
 
-# --- TELA DE LOGIN (ATUALIZADA COM EFEITO) ---
+# --- TELA DE LOGIN ---
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 CREDENCIAIS = {"Eduardo Dev": "Eduardo2007", "felpz": "f2025"}
@@ -121,11 +121,9 @@ if not st.session_state['logado']:
         
         if st.button("Entrar", use_container_width=True):
             if usuario in CREDENCIAIS and CREDENCIAIS[usuario] == senha:
-                # --- EFEITO DE LOGIN AQUI ---
                 st.success(f"👋 Bem-vindo, {usuario}!")
                 with st.spinner("Carregando sistema AgroMind..."):
-                    time.sleep(2) # Espera 2 segundos para o efeito visual
-                # ----------------------------
+                    time.sleep(2)
                 
                 st.session_state['logado'] = True
                 st.rerun()
@@ -202,7 +200,7 @@ with aba2:
 with aba3:
     st.markdown("### 🚜 Ferramentas Técnicas")
     
-    # 1. PLANTIO (COMPLETO)
+    # 1. PLANTIO (Cálculo Flexível)
     with st.expander("🌱 Plantio (Cálculo Flexível)", expanded=True):
         modo_avancado = st.checkbox("🛠️ Modo Avançado (Qualidade e Perdas)")
         c_pop, c_esp = st.columns(2)
@@ -228,7 +226,9 @@ with aba3:
             else:
                 pop_necessaria = (pop * 1000) / ((vc / 100) * fator_perda)
                 
-                html_res = f"""<div class="result-box">🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>"""
+                html_res = f"""<div class="result-box">
+                🎯 População Alvo: {int(pop*1000):,} plantas/ha<br>
+                🌱 <b>Sementes para Plantar: {int(pop_necessaria):,} /ha</b>"""
                 
                 if espacamento > 0:
                     metros_lineares = 10000 / (espacamento / 100)
@@ -261,42 +261,82 @@ with aba3:
                 nc = (ctc * (v2 - v1)) / prnt
                 st.markdown(f"<div class='result-box'>🚜 Aplicar: {nc:.2f} toneladas/ha</div>", unsafe_allow_html=True)
 
-    # 3. PULVERIZAÇÃO (COMPLETA)
-    with st.expander("🧪 Pulverização (Planejamento)"):
-        st.write("Dados Obrigatórios:")
+    # 3. PULVERIZAÇÃO (TRATOR & DRONE) - Atualizado
+    with st.expander("🧪 Pulverização (Trator & Drone)", expanded=True):
+        
+        # Seleção do Equipamento
+        tipo_equip = st.radio("Equipamento:", ["🚜 Trator", "🚁 Drone Agrícola"], horizontal=True)
+        
         c1, c2 = st.columns(2)
-        with c1: tanque = st.number_input("Capacidade do Tanque (L):", value=2000.0)
-        with c2: vazao = st.number_input("Volume de Calda (L/ha):", value=150.0)
+        with c1:
+            if tipo_equip == "🚁 Drone Agrícola":
+                tanque = st.number_input("Tanque do Drone (L):", value=10.0, step=1.0)
+            else:
+                tanque = st.number_input("Tanque do Pulverizador (L):", value=2000.0, step=100.0)
+        
+        with c2:
+            val_padrao = 10.0 if tipo_equip == "🚁 Drone Agrícola" else 150.0
+            vazao = st.number_input("Volume de Calda (L/ha):", value=val_padrao, step=1.0)
 
-        st.write("Dados Opcionais:")
+        # CAMPOS ESPECÍFICOS DE DRONE
+        faixal = 0; veloc = 0; bat_voo = 0
+        if tipo_equip == "🚁 Drone Agrícola":
+            st.markdown("---")
+            st.caption("🚁 Parâmetros de Voo")
+            c_d1, c_d2, c_d3 = st.columns(3)
+            with c_d1: faixal = st.number_input("Faixa de Aplicação (m):", value=5.0)
+            with c_d2: veloc = st.number_input("Velocidade (km/h):", value=20.0)
+            with c_d3: bat_voo = st.number_input("Hectares por Bateria:", value=2.0)
+
+        st.markdown("---")
+        st.write("📋 Planejamento Opcional:")
         c3, c4 = st.columns(2)
-        with c3: dose = st.number_input("Dose do Produto (L ou Kg/ha):", value=0.0)
+        with c3: dose = st.number_input("Dose Produto (L ou Kg/ha):", value=0.0)
         with c4: area_total = st.number_input("Área Total (ha):", value=0.0)
         
-        if st.button("Calcular Pulverização"):
+        if st.button("Calcular Aplicação"):
             if vazao > 0 and tanque > 0:
+                # 1. COBERTURA DO TANQUE
                 area_tanque = tanque / vazao
-                html_res = f"""<div class="result-box">🚜 <b>Um tanque cobre: {area_tanque:.2f} ha</b>"""
+                html_res = f"""<div class="result-box">
+                <b>⛽ Um tanque cheio cobre: {area_tanque:.2f} ha</b>"""
 
+                # 2. RENDIMENTO TEÓRICO (DRONE)
+                if tipo_equip == "🚁 Drone Agrícola" and faixal > 0 and veloc > 0:
+                    cap_teorica = (veloc * faixal) / 10
+                    html_res += f"<br>⚡ <b>Rendimento Teórico: {cap_teorica:.1f} ha/hora</b>"
+
+                # 3. PRODUTO NO TANQUE
                 if dose > 0:
                     prod_tanque = area_tanque * dose
                     html_res += f"<br>🧪 <b>Colocar no Tanque: {prod_tanque:.2f} (L ou Kg)</b>"
-                else: html_res += "<br><i>(Preencha a Dose para ver qtd de produto)</i>"
+                else: 
+                    html_res += "<br><i>(Preencha a Dose para ver qtd de produto)</i>"
 
+                # 4. LOGÍSTICA TOTAL
                 if area_total > 0:
                     num_tanques = area_total / area_tanque
                     vol_total = area_total * vazao
-                    html_res += f"<br><br>📋 <b>Logística ({area_total} ha):</b>"
+                    
+                    html_res += f"<br><br>📋 <b>Logística Total ({area_total} ha):</b>"
                     html_res += f"<br>💧 Calda Total: {vol_total:,.0f} L"
-                    html_res += f"<br>🔄 Tanques: {num_tanques:.1f} viagens"
+                    html_res += f"<br>🔄 Recargas: {num_tanques:.1f} vezes"
+                    
+                    # BATERIAS (DRONE)
+                    if tipo_equip == "🚁 Drone Agrícola" and bat_voo > 0:
+                        num_baterias = area_total / bat_voo
+                        html_res += f"<br>🔋 <b>Trocas de Bateria Estimadas: {num_baterias:.1f} un</b>"
+                    
                     if dose > 0:
                         prod_total = area_total * dose
                         html_res += f"<br>📦 Produto Total: {prod_total:.1f} (L ou Kg)"
-                else: html_res += "<br><i>(Preencha Área Total para ver logística)</i>"
+                else: 
+                    html_res += "<br><i>(Preencha Área Total para ver logística)</i>"
                 
                 html_res += "</div>"
                 st.markdown(html_res, unsafe_allow_html=True)
-            else: st.error("Tanque e Vazão devem ser maiores que 0.")
+            else:
+                st.error("Tanque e Volume devem ser maiores que 0.")
 
     # 4. CONVERSÕES
     with st.expander("📊 Conversor de Medidas"):
